@@ -1,0 +1,59 @@
+# Secrets and machine-local configuration
+.env
+.env.*
+!.env.example
+.mcp.json
+.claude/
+.agents/
+.codex/
+config/private_sources.json
+
+# Private operational snapshots (retained locally and backed up to Drive)
+/*_FIX_REPORT_*.md
+/*_FIX_STATUS_*.md
+
+# Python and test runtimes
+.venv/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+.runtime/
+.edge_profile_optica/
+
+# Publisher content and personal knowledge bases
+*.pdf
+ieee-pdf/
+optica-pdf/
+nature-pdf/
+pdf-quarantine/
+DesignCon/
+Obsidian/
+drive-zip-incoming/
+drive-zip-extracted/
+
+# Databases, generated datasets, reports, logs, and backups
+py_01_data/
+py_02_reports/
+outputs/
+logs/
+tmp/
+tools/
+_backups/
+Temp_DB/
+*.rar
+*.xlsx
+*.xls
+*.csv
+*.tsv
+*.db
+*.sqlite
+*.sqlite3
+*.log
+*.part
+*.tar
+*.tar.gz
+*.zip
+*.7z
+
+# Runtime state
+scripts/.zotero_tag_ingest_state.json

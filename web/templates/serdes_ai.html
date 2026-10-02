@@ -1,0 +1,30 @@
+<section id="survey-ai" class="survey-ai" aria-labelledby="survey-ai-title">
+  <div class="sai-heading">
+    <div><span class="sai-eyebrow">LOCAL RESEARCH ASSISTANT</span><h3 id="survey-ai-title">Survey AI</h3><p>차트의 숫자는 서버가 계산하고, 로컬 AI가 근거와 비교 조건을 해석합니다.</p></div>
+    <a href="/ai">Research Desk ↗</a>
+  </div>
+  <p id="sai-filters" class="sai-context"></p>
+  <p class="sai-help">위 Performance 필터 기준 · Explorer 검색, 목록 범위, 차트 확대는 미반영 · gpt-oss 20B / 16K · 한 번에 한 작업 실행</p>
+  <label for="sai-question">분석 관점 <span class="sai-help">선택 사항</span></label>
+  <textarea id="sai-question" rows="2" maxlength="2000" placeholder="예: RX와 TRX의 비교 한계를 설명하고, 원문 확인이 필요한 조건을 짚어줘."></textarea>
+  <div class="sai-actions">
+    <button id="sai-analyze" class="sai-primary" type="button">현재 조건 AI 분석</button>
+    <button id="sai-compare" type="button" disabled>선택 논문 AI 비교 (0/5)</button>
+    <button id="sai-clear" type="button" disabled>선택 해제</button>
+  </div>
+  <p class="sai-help">성능표 또는 아래 Paper Explorer의 ‘비교 선택’으로 2~5편을 담으세요. 비교는 DB의 초록·대표 동작점을 사용하며 PDF 전체를 새로 읽지 않습니다.</p>
+  <div id="sai-selected" class="sai-selected" aria-label="AI 비교 선택 논문"></div>
+  <div class="sai-actions sai-history">
+    <label for="sai-history">내 분석 기록</label><select id="sai-history"><option value="">기록을 선택하세요</option></select>
+    <button id="sai-refresh" type="button">기록 새로고침</button>
+    <button id="sai-cancel" type="button" hidden>현재 작업 취소</button>
+  </div>
+  <p id="sai-status" role="status" aria-live="polite" class="sai-status">분석 버튼을 눌렀을 때만 모델을 실행합니다. 기존 추천 작업이 진행 중이면 대기할 수 있습니다.</p>
+  <div id="sai-result" hidden></div>
+  <details class="sai-gap-panel">
+    <summary>데이터 보강 대기열 · 충돌 / 누락 / PDF</summary>
+    <p class="sai-help">Core + Adjacent 전체에서 규칙으로 찾은 후보입니다. 즐겨찾기를 제외하지 않으며 AI 검토 후 필요하면 PDF 추출·관리자 승인으로 연결합니다.</p>
+    <button id="sai-gaps-load" type="button">보강 후보 불러오기</button>
+    <p id="sai-gaps-status" role="status"></p><div id="sai-gaps"></div>
+  </details>
+</section>

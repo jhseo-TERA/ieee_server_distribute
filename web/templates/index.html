@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paper Repository</title>
+<style>
+  :root{
+    --wine:#6B1E2E; --wine-dark:#4A1520; --wine-light:#8a2b3e;
+    --bg:#f4f5f7; --card:#ffffff; --line:#e3e5e9; --text:#1f2430;
+    --muted:#6b7280; --accent:#6B1E2E; --chip:#f0e6e8;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;padding:0;overflow:hidden}
+  body{font-family:"Segoe UI",Roboto,"Malgun Gothic",sans-serif;background:var(--bg);color:var(--text);font-size:14px;display:flex;flex-direction:column}
+
+  /* ---------- Header ---------- */
+  header{background:linear-gradient(180deg,var(--wine),var(--wine-dark));color:#fff;padding:16px 24px;box-shadow:0 2px 8px rgba(0,0,0,.15);flex-shrink:0}
+  .head-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .logo{font-size:22px;font-weight:700;letter-spacing:.3px;display:flex;align-items:center;gap:10px}
+  .logo .mark{background:#fff;color:var(--wine);border-radius:6px;padding:2px 8px;font-size:15px;font-weight:800}
+  .badges{display:flex;gap:10px;margin-left:auto;flex-wrap:wrap}
+  .badge{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:6px 12px;text-align:center;min-width:92px}
+  .badge b{display:block;font-size:16px;font-weight:700}
+  .badge span{font-size:11px;opacity:.85}
+  button.badge{color:inherit;font:inherit;cursor:pointer}
+  button.badge:hover,button.badge:focus-visible{background:rgba(255,255,255,.25);outline:2px solid #fff;outline-offset:2px}
+  .badge.missing{border-color:#ffcd85;background:rgba(255,193,107,.18)}
+  .account{display:flex;align-items:center;gap:8px;font-size:12px}
+  .survey-link{border:1px solid rgba(255,255,255,.45);background:#fff;color:var(--wine);border-radius:7px;padding:7px 10px;text-decoration:none;font-weight:750;white-space:nowrap}
+  .survey-link:hover{background:#f8e9ec}
+  .logout-btn{border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.12);color:#fff;border-radius:7px;padding:7px 10px;cursor:pointer}
+  .logout-btn:hover{background:rgba(255,255,255,.22)}
+
+  /* ---------- Filter bar ---------- */
+  .filters{background:var(--card);border-bottom:1px solid var(--line);padding:12px 24px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:20;flex-shrink:0}
+  .filters input[type=text],.filters select{height:36px;border:1px solid var(--line);border-radius:8px;padding:0 10px;background:#fff;font-size:14px;color:var(--text)}
+  #q{flex:1;min-width:220px}
+  .filters select{min-width:120px}
+  .chk{display:flex;align-items:center;gap:6px;color:var(--muted);white-space:nowrap}
+  .page-size{display:flex;align-items:center;gap:6px;color:var(--muted);white-space:nowrap}
+  .page-size select{min-width:76px}
+  .btn{height:36px;border:none;border-radius:8px;padding:0 16px;font-size:14px;font-weight:600;cursor:pointer}
+  .btn-primary{background:var(--wine);color:#fff}
+  .btn-primary:hover{background:var(--wine-light)}
+  .btn-ghost{background:#eef0f3;color:var(--text)}
+  .btn-ghost:hover{background:#e2e5ea}
+
+  /* ---------- Layout ---------- */
+  .wrap{display:flex;gap:0;align-items:stretch;flex:1;min-height:0;overflow:hidden}
+  .main{flex:1;min-width:0;height:100%;padding:16px 24px;overflow-y:auto;overscroll-behavior-y:contain;scrollbar-gutter:stable}
+  .result-info{color:var(--muted);font-size:13px;margin-bottom:10px}
+
+  /* ---------- Table ---------- */
+  .table-scroll{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:10px}
+  table{width:100%;border-collapse:collapse;min-width:820px}
+  thead th{position:sticky;top:0;background:var(--wine-dark);color:#fff;font-weight:600;font-size:12.5px;text-align:left;padding:11px 12px;white-space:nowrap;z-index:5}
+  tbody td{padding:10px 12px;border-top:1px solid var(--line);vertical-align:top}
+  tbody tr:hover{background:#faf6f7}
+  .col-star{width:34px;text-align:center}
+  .col-cite{width:72px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .star{cursor:pointer;font-size:18px;line-height:1;background:none;border:none;color:#c9ccd2;padding:2px 3px;transition:color .12s,transform .1s}
+  .star:hover{color:#e6b800;transform:scale(1.2)}
+  .star.on{color:#e6b800}
+  .star:disabled{cursor:default}
+  .star:disabled:hover{transform:none;color:#c9ccd2}
+  .star.on:disabled:hover{color:#e6b800}
+  .col-no{width:52px;color:var(--muted);text-align:right}
+  .col-year{width:60px;text-align:center}
+  .col-issue{width:100px;color:var(--muted);font-size:12.5px}
+  .col-src{width:110px}
+  .col-src2{width:150px}
+  .title-cell{font-weight:600;line-height:1.35}
+  .authors-cell{color:var(--muted);font-size:12.5px;line-height:1.35}
+  .src-badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11.5px;font-weight:700;color:#fff;white-space:nowrap}
+  .src-type{display:block;font-size:10.5px;color:var(--muted);margin-top:3px;font-weight:500}
+  .link-x{color:var(--wine);text-decoration:none;font-weight:600;font-size:12.5px;border:1px solid var(--wine);border-radius:6px;padding:4px 8px;display:inline-block;margin-right:5px}
+  .link-x:hover{background:var(--chip)}
+  .pdf-btn{font-size:12.5px;font-weight:700;border:1px solid var(--wine);border-radius:6px;padding:4px 8px;background:var(--wine);color:#fff;cursor:pointer}
+  .pdf-btn:hover{background:var(--wine-light)}
+  .pdf-btn:disabled{background:#eceef1;color:#aeb4bd;border-color:#e3e5e9;cursor:not-allowed}
+  .empty{padding:48px;text-align:center;color:var(--muted)}
+
+  /* ---------- 추천 패널 ---------- */
+  .reco-panel{background:var(--card);border:1px solid var(--line);border-radius:10px;margin-bottom:16px;overflow:hidden}
+  .reco-head{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:#faf6f7;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .reco-title{font-weight:700;color:var(--wine);font-size:13.5px;white-space:nowrap}
+  .reco-sub{color:var(--muted);font-size:12px;flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+  .reco-sub>div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .reco-kw-ieee{color:#4b7bec}
+  .reco-kw-optica{color:#e07b39}
+  .reco-kw-nature{color:#059669}
+  .reco-actions{display:flex;gap:6px;flex-shrink:0}
+  .reco-mode{height:28px;max-width:160px;font-size:12px}
+  .reco-reason{margin-top:5px;color:#6b3546;font-size:12px;line-height:1.5}
+  .reco-reason details{color:var(--muted);margin-top:2px}
+  .reco-profile{padding:7px 14px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--line)}
+  .reco-profile summary{cursor:pointer}
+  .reco-profile p{white-space:normal;margin:6px 0;line-height:1.5}
+  @media(max-width:720px){.reco-actions{flex-wrap:wrap}.reco-sub{min-width:180px}.reco-sub>div{white-space:normal}}
+  .reco-refresh{height:28px;padding:0 10px;font-size:12.5px}
+  .reco-tabs-shell{display:flex;align-items:stretch;background:#eceef2;border-bottom:1px solid var(--line);min-width:0}
+  .reco-tabs-shell[hidden]{display:none}
+  .reco-tabs-nav{width:32px;flex:0 0 32px;border:0;background:#e1e4e9;color:#545b67;cursor:pointer;font-size:18px}
+  .reco-tabs-nav:hover{background:#d5d9e0;color:var(--wine)}
+  .reco-tabs{display:flex;flex:1 1 auto;align-items:flex-end;gap:3px;min-width:0;overflow-x:scroll;overflow-y:hidden;padding:6px 8px 0;scrollbar-color:#9ca3af #e5e7eb;scrollbar-width:auto;overscroll-behavior-x:contain}
+  .reco-tabs::-webkit-scrollbar{height:11px}
+  .reco-tabs::-webkit-scrollbar-track{background:#e5e7eb;border-radius:8px}
+  .reco-tabs::-webkit-scrollbar-thumb{background:#9ca3af;border:2px solid #e5e7eb;border-radius:8px}
+  .reco-tab-kind{align-self:center;flex:0 0 auto;background:#eceef2;color:var(--muted);font-size:10.5px;font-weight:800;letter-spacing:.4px;padding:0 5px;white-space:nowrap}
+  .reco-tab-kind:not(:first-child){margin-left:8px;border-left:1px solid #cbd0d8;padding-left:12px}
+  .reco-tab{flex:0 0 auto;min-width:82px;height:32px;padding:0 12px;border:1px solid #c9ced7;border-bottom:0;border-radius:7px 7px 0 0;background:#f5f6f8;color:#4b5260;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap}
+  .reco-tab small{margin-left:5px;color:#7c8491;font-size:10.5px;font-weight:600}
+  .reco-tab:hover{background:#fff;color:var(--wine)}
+  .reco-tab.active{background:#fff;color:var(--wine);border-color:#b7bdc7;box-shadow:inset 0 -3px 0 var(--wine)}
+  .reco-tab.active small{color:var(--wine)}
+  .reco-scroll{height:360px;min-height:140px;max-height:640px;overflow-y:auto;resize:vertical;scrollbar-gutter:stable}
+  .reco-scroll table{min-width:0}
+  .reco-scroll .title-cell{font-size:13px}
+  .reco-scroll .authors-cell{margin-top:2px}
+
+  /* ---------- Pagination ---------- */
+  .pager{display:flex;gap:6px;justify-content:center;align-items:center;margin:18px 0 8px;flex-wrap:wrap}
+  .pager button{min-width:34px;height:34px;border:1px solid var(--line);background:#fff;border-radius:7px;cursor:pointer;font-size:13px;color:var(--text)}
+  .pager button:hover:not(:disabled){border-color:var(--wine);color:var(--wine)}
+  .pager button.active{background:var(--wine);color:#fff;border-color:var(--wine)}
+  .pager button:disabled{opacity:.45;cursor:default}
+  .pager .info{color:var(--muted);font-size:12.5px;margin:0 8px}
+
+  /* ---------- PDF side panel ---------- */
+  .pdf-panel{width:0;height:100%;min-height:0;flex-shrink:0;transition:width .22s ease;background:#fff;border-left:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden;overscroll-behavior:contain}
+  .pdf-panel.open{width:46%;min-width:380px}
+  .pdf-head{background:var(--wine-dark);color:#fff;padding:10px 14px;display:flex;align-items:center;gap:10px}
+  .pdf-head .t{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+  .pdf-head a{color:#fff;font-size:12px;text-decoration:underline;white-space:nowrap}
+  .pdf-head button{background:rgba(255,255,255,.15);border:none;color:#fff;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:16px}
+  .pdf-panel iframe{display:block;flex:1;min-height:0;width:100%;border:none;background:#525659}
+
+  @media (max-width:900px){
+    .pdf-panel.open{position:fixed;right:0;top:0;bottom:0;width:100%;min-width:0;z-index:60;box-shadow:-4px 0 20px rgba(0,0,0,.3)}
+    .badges{width:100%;margin-left:0}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="head-row">
+    <div class="logo"><span class="mark">IEEE·Optica·Nature·DesignCon</span> Paper Repository</div>
+    <div class="badges">
+      <div class="badge"><b id="stat-total">–</b><span>전체 논문</span></div>
+      <button type="button" class="badge" data-pdf="present" data-fav="" title="전체 PDF 보유 논문 보기"><b id="stat-pdf">–</b><span>전체 PDF 보유</span></button>
+      <button type="button" class="badge" data-pdf="" data-fav="favorite" title="내 즐겨찾기 전체 보기"><b id="stat-fav">–</b><span>★ 즐겨찾기 전체</span></button>
+      <button type="button" class="badge" data-pdf="present" data-fav="favorite" title="즐겨찾기 중 PDF 확보 논문 보기"><b id="stat-fav-pdf">–</b><span>즐겨찾기 PDF 확보</span></button>
+      <button type="button" class="badge missing" data-pdf="missing" data-fav="favorite" title="즐겨찾기 중 PDF 미확보 논문 보기"><b id="stat-fav-missing">–</b><span>즐겨찾기 PDF 미확보</span></button>
+      <button type="button" class="badge" data-pdf="present" data-fav="nonfavorite" title="즐겨찾기가 아닌 PDF 보유 논문 보기"><b id="stat-nonfav-pdf">–</b><span>비즐겨찾기 PDF 보유</span></button>
+      <div class="badge"><b id="stat-period">–</b><span>수록 기간</span></div>
+    </div>
+    <div class="account">
+      <a class="survey-link" href="/ai">AI Research Desk →</a>
+      <a class="survey-link" href="{{ url_for('serdes_survey') }}">SerDes Survey →</a>
+      <span>{{ username }}{% if role == "viewer" %} · 읽기 전용{% endif %}</span>
+      <a class="survey-link" href="/account/password">비밀번호 변경</a>
+      <form method="post" action="{{ url_for('logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="logout-btn" type="submit">로그아웃</button>
+      </form>
+    </div>
+  </div>
+</header>
+
+<div class="filters">
+  <input type="text" id="q" placeholder="제목 · 저자 검색…" autocomplete="off">
+  <select id="f-year"><option value="">연도 전체</option></select>
+  <select id="f-publisher"><option value="">퍼블리셔 전체</option></select>
+  <select id="f-source"><option value="">저널·학회 전체</option></select>
+  <select id="f-type">
+    <option value="">구분 전체</option>
+    <option value="journal">저널</option>
+    <option value="conference">학회</option>
+  </select>
+  <select id="f-pdf" aria-label="PDF 보유 여부">
+    <option value="">PDF 전체</option>
+    <option value="present">PDF만 보기</option>
+    <option value="missing">PDF 없는 것만 보기</option>
+  </select>
+  <select id="f-fav" aria-label="즐겨찾기 여부">
+    <option value="">즐겨찾기 전체</option>
+    <option value="favorite">★ 즐겨찾기만 보기</option>
+    <option value="nonfavorite">☆ 즐겨찾기 아닌 것만 보기</option>
+  </select>
+  <label class="page-size">페이지당
+    <select id="f-size" aria-label="페이지당 표시 개수">
+      <option value="50" selected>50개</option>
+      <option value="100">100개</option>
+      <option value="150">150개</option>
+      <option value="200">200개</option>
+    </select>
+  </label>
+  <button class="btn btn-primary" id="btn-search">검색</button>
+  <button class="btn btn-ghost" id="btn-reset">초기화</button>
+</div>
+
+<div class="wrap">
+  <div class="main">
+    <div id="favorite-status" role="status" aria-live="polite" class="result-info" hidden></div>
+    <div class="reco-panel" id="reco-panel">
+      <div class="reco-head">
+        <span class="reco-title">★ 즐겨찾기 기반 추천</span>
+        <span class="reco-sub" id="reco-sub">불러오는 중…</span>
+        <div class="reco-actions">
+          <select class="reco-mode" id="reco-mode" aria-label="추천 모드"><option value="match">관심사 일치</option><option value="explore">인접 분야 탐색</option><option value="recent">최신 연구</option><option value="survey">SerDes 보강</option><option value="diverse">다양한 추천</option></select>
+          <button class="btn btn-primary reco-refresh" id="btn-reco-addall"{% if not can_edit_favorites %} hidden disabled{% endif %}>현재 탭 전체 ★ 추가</button>
+          <button class="btn btn-ghost reco-refresh" id="btn-reco-refresh">새로고침</button>
+        </div>
+      </div>
+      <details class="reco-profile" id="reco-profile" hidden><summary>관심 프로필과 추천 기준</summary><p id="reco-profile-text"></p></details>
+      <details class="reco-profile" id="reco-feedback" hidden><summary>추천에서 제외한 논문</summary><p>즐겨찾기와 함께 모든 계정에 적용됩니다. 복원하면 다시 추천 후보가 됩니다.</p><div id="reco-feedback-list"></div></details>
+      <div class="reco-tabs-shell" id="reco-tabs-shell" hidden>
+        <button class="reco-tabs-nav" id="reco-tabs-prev" type="button" title="출처 탭 왼쪽으로 이동" aria-label="출처 탭 왼쪽으로 이동">‹</button>
+        <div class="reco-tabs" id="reco-tabs" role="tablist" aria-label="추천 저널 및 학회"></div>
+        <button class="reco-tabs-nav" id="reco-tabs-next" type="button" title="출처 탭 오른쪽으로 이동" aria-label="출처 탭 오른쪽으로 이동">›</button>
+      </div>
+      <div class="table-scroll reco-scroll">
+        <table>
+          <tbody id="reco-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="result-info" id="result-info">불러오는 중…</div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th class="col-star" title="즐겨찾기">★</th>
+            <th class="col-no">No</th>
+            <th>제목</th>
+            <th class="col-src">저자</th>
+            <th class="col-year">연도</th>
+            <th class="col-src">출처</th>
+            <th class="col-cite" title="즐겨찾기 논문만 집계">인용수</th>
+            <th class="col-issue">권호/페이지</th>
+            <th class="col-src2">원문</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="pager" id="pager"></div>
+  </div>
+
+  <aside class="pdf-panel" id="pdf-panel">
+    <div class="pdf-head">
+      <span class="t" id="pdf-title">PDF</span>
+      <a id="pdf-newtab" href="#" target="_blank">새 탭 ↗</a>
+      <button id="pdf-close" title="닫기">×</button>
+    </div>
+    <iframe id="pdf-frame" src="about:blank"></iframe>
+  </aside>
+</div>
+
+<script>
+const API = "";  // 동일 오리진
+const CSRF_TOKEN = {{ csrf_token|tojson }};
+const CAN_EDIT_FAVORITES = {{ can_edit_favorites|tojson }};
+const favoriteOverrides = new Map(), pendingFavorites = new Set();
+const PAGER_BLOCK_SIZE = 10;
+const RECO_PER_SOURCE = 20;
+const state = { q:"", year:"", publisher:"", source:"", type:"", pdf_status:"", fav_status:"", page:1, size:50 };
+
+// 출처별 색상 — dataviz 스킬의 validate_palette.js 로 20개 전부 검증 통과한 세트
+// (CVD 분리/명도밴드/채도하한/대비 전부 PASS). 예전엔 OL이 매핑 자체가 빠져있었고
+// ESSCIRC와 Optica가 완전히 같은 색(#7c3aed)이었음 — 둘 다 이번에 해결됨.
+const SRC_COLORS = {
+  JSSC:"#b33819", "TCAS-I":"#13864d", "TCAS-II":"#9119b3", ISSCC:"#7c8613",
+  "VLSI-Circuits":"#197ab3", "VLSI-Tech":"#b3194c", ISCAS:"#198613", MWSCAS:"#511cc4",
+  ESSCIRC:"#b36b19", RFIC:"#089181", ASSCC:"#b319a1", APCCAS:"#568613",
+  NEWCAS:"#1947b3", OE:"#b31919", OL:"#138634", JLT:"#7319b3",
+  PR:"#867713", Optica:"#1999b3", NPHOTON:"#b3196e", NCOMMS:"#308613",
+  PTL:"#8f2a5c", ICTA:"#2563eb", DesignCon:"#005f73"
+};
+const colorFor = s => SRC_COLORS[s] || "#556";
+const TYPE_KO = { journal:"저널", conference:"학회" };
+const PUB_KO = { ieee:"IEEE", optica:"Optica", nature:"Nature", designcon:"DesignCon" };
+const esc = s => (s==null?"":String(s)).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+// 로그인 없이 원문 사이트로 바로 나가면 인증이 안 돼 PDF를 못 봄 -
+// 연세대 프록시 서브도메인으로 바꿔서 클릭하면 로그인 상태로 열리게 함
+// (다운로드 스크립트들이 쓰는 것과 동일한 EZproxy 서브도메인 패턴).
+const PROXY_HOST_MAP = {
+  "ieeexplore.ieee.org": "ieeexplore-ieee-org-ssl.access.yonsei.ac.kr",
+  "opg.optica.org": "opg-optica-org-ssl.access.yonsei.ac.kr",
+  "www.nature.com": "www-nature-com-ssl.access.yonsei.ac.kr",
+};
+const proxyUrl = u => {
+  let out = u || "";
+  for (const [host, proxyHost] of Object.entries(PROXY_HOST_MAP)) {
+    if (out.includes(host)) return out.replace(host, proxyHost);
+  }
+  return out;
+};
+// IEEE는 관례상 "Xplore"(사이트 이름)로 표기하고, Optica/Nature는 퍼블리셔명 그대로 표기
+const linkLabel = it => it.source_system === "ieee" ? "Xplore" : (PUB_KO[it.source_system] || "Link");
+const favoriteButton = it => {
+  const art = String(it.article_number);
+  const selected = favoriteOverrides.has(art) ? favoriteOverrides.get(art) : !!it.is_favorite;
+  const on = selected ? "on" : "";
+  const label = selected ? "★" : "☆";
+  if(CAN_EDIT_FAVORITES){
+    return `<button class="star ${on}" title="즐겨찾기" data-act="fav" data-art="${esc(art)}" ${pendingFavorites.has(art) ? 'disabled aria-busy="true"' : ''}>${label}</button>`;
+  }
+  return `<button class="star ${on}" title="읽기 전용: 관리자만 수정할 수 있습니다" disabled>${label}</button>`;
+};
+
+function renderStats(m){
+  document.getElementById("stat-total").textContent = m.total.toLocaleString();
+  document.getElementById("stat-pdf").textContent = m.pdf_total.toLocaleString();
+  const favEl = document.getElementById("stat-fav");
+  favEl.dataset.n = m.fav_total || 0;
+  favEl.textContent = (m.fav_total || 0).toLocaleString();
+  document.getElementById("stat-fav-pdf").textContent = m.fav_pdf_total.toLocaleString();
+  document.getElementById("stat-fav-missing").textContent = m.fav_missing_pdf_total.toLocaleString();
+  document.getElementById("stat-nonfav-pdf").textContent = m.nonfav_pdf_total.toLocaleString();
+  document.getElementById("stat-period").textContent =
+     (m.year_min && m.year_max) ? `${m.year_min}–${m.year_max}` : "–";
+}
+
+async function loadMeta(){
+  const r = await fetch(API+"/api/meta");
+  const m = await r.json();
+  renderStats(m);
+
+  const ys = document.getElementById("f-year");
+  m.years.forEach(y=>{ const o=document.createElement("option"); o.value=y; o.textContent=y; ys.appendChild(o); });
+
+  const ps = document.getElementById("f-publisher");
+  (m.publishers||[]).forEach(p=>{
+    const o=document.createElement("option"); o.value=p.code;
+    o.textContent=`${p.label} (${p.count.toLocaleString()})`; ps.appendChild(o);
+  });
+
+  const ss = document.getElementById("f-source");
+  m.sources.forEach(s=>{
+    const o=document.createElement("option"); o.value=s.name;
+    o.textContent=`${s.name} (${s.count.toLocaleString()})`; ss.appendChild(o);
+  });
+}
+
+function buildQuery(){
+  const p = new URLSearchParams();
+  if(state.q) p.set("q",state.q);
+  if(state.year) p.set("year",state.year);
+  if(state.publisher) p.set("publisher",state.publisher);
+  if(state.source) p.set("source",state.source);
+  if(state.type) p.set("type",state.type);
+  if(state.pdf_status) p.set("pdf_status",state.pdf_status);
+  if(state.fav_status) p.set("fav_status",state.fav_status);
+  p.set("page",state.page); p.set("size",state.size);
+  return p.toString();
+}
+
+async function loadPapers(){
+  document.getElementById("result-info").textContent = "불러오는 중…";
+  const r = await fetch(API+"/api/papers?"+buildQuery());
+  const d = await r.json();
+  renderRows(d);
+  renderPager(d);
+  const from = d.total? (d.page-1)*d.size+1 : 0;
+  const to = Math.min(d.page*d.size, d.total);
+  document.getElementById("result-info").innerHTML =
+    `총 <b>${d.total.toLocaleString()}</b>건 중 ${from.toLocaleString()}–${to.toLocaleString()} 표시`;
+}
+
+function renderRows(d){
+  const tb = document.getElementById("tbody");
+  if(!d.items.length){
+    tb.innerHTML = `<tr><td colspan="9"><div class="empty">조건에 맞는 논문이 없습니다.</div></td></tr>`;
+    return;
+  }
+  const base = (d.page-1)*d.size;
+  tb.innerHTML = d.items.map((it,i)=>{
+    const pdfBtn = it.pdf_available
+      ? `<button class="pdf-btn" data-act="pdf" data-art="${esc(it.article_number)}" data-title="${esc(it.title)}">PDF</button>`
+      : `<button class="pdf-btn" disabled title="PDF 없음">PDF</button>`;
+    const xplore = it.url
+      ? `<a class="link-x" href="${esc(proxyUrl(it.url))}" target="_blank" rel="noopener">${esc(linkLabel(it))}</a>` : "";
+    const star = favoriteButton(it);
+    const hasCitation = it.is_favorite && it.citation_count !== null && it.citation_count !== undefined;
+    const citation = hasCitation ? Number(it.citation_count).toLocaleString() : "-";
+    const citationTitle = hasCitation
+      ? `인용수 출처: ${esc(it.citation_source||"확인 불가")}`
+      : (it.is_favorite ? "인용수 업데이트 대기 중" : "즐겨찾기 논문만 집계");
+    return `<tr>
+      <td class="col-star">${star}</td>
+      <td class="col-no">${base+i+1}</td>
+      <td class="title-cell">${esc(it.title)}</td>
+      <td class="authors-cell">${esc(it.authors)||'<span style="color:#c2c6cd">—</span>'}</td>
+      <td class="col-year">${esc(it.year)||''}</td>
+      <td><span class="src-badge" style="background:${colorFor(it.source_name)}">${esc(it.source_name)||'?'}</span>
+          <span class="src-type">${TYPE_KO[it.source_type]||esc(it.source_type)||''}</span></td>
+      <td class="col-cite" data-citation-art="${esc(it.article_number)}" title="${citationTitle}">${citation}</td>
+      <td class="col-issue">${esc(it.issue)||'—'}</td>
+      <td class="col-src2">${xplore}${pdfBtn}</td>
+    </tr>`;
+  }).join("");
+}
+
+function renderPager(d){
+  const pg = document.getElementById("pager");
+  if(d.pages<=1){ pg.innerHTML=""; return; }
+  const currentPage = Math.min(Math.max(Number(d.page)||1,1),d.pages);
+  const blockStart = Math.floor((currentPage-1)/PAGER_BLOCK_SIZE)*PAGER_BLOCK_SIZE+1;
+  const blockEnd = Math.min(d.pages,blockStart+PAGER_BLOCK_SIZE-1);
+  let html = "";
+  const mk=(label,page,{active=false,disabled=false,title=""}={})=>
+    `<button class="${active?'active':''}" ${disabled?'disabled':''} title="${title}" aria-label="${title||label}" onclick="gotoPage(${page})">${label}</button>`;
+  html += mk("«",1,{disabled:currentPage===1,title:"첫 페이지"});
+  html += mk("‹",Math.max(1,blockStart-1),{disabled:blockStart===1,title:"이전 10페이지"});
+  for(let p=blockStart;p<=blockEnd;p++) html+=mk(p,p,{active:p===currentPage,title:`${p}페이지`});
+  html += mk("›",Math.min(d.pages,blockEnd+1),{disabled:blockEnd===d.pages,title:"다음 10페이지"});
+  html += mk("»",d.pages,{disabled:currentPage===d.pages,title:"마지막 페이지"});
+  html += `<span class="info">${currentPage} / ${d.pages} 페이지</span>`;
+  pg.innerHTML = html;
+}
+
+function gotoPage(p){
+  state.page=p;
+  loadPapers();
+  document.querySelector(".main").scrollTo({top:0,behavior:"smooth"});
+}
+
+// ---- PDF 사이드 패널 ----
+function openPdf(articleNumber, title){
+  const panel=document.getElementById("pdf-panel");
+  document.getElementById("pdf-title").textContent = title||("문서 "+articleNumber);
+  const url = API+"/pdf/"+articleNumber;
+  document.getElementById("pdf-frame").src = url;
+  document.getElementById("pdf-newtab").href = url;
+  panel.classList.add("open");
+}
+document.getElementById("pdf-close").onclick=()=>{
+  const panel=document.getElementById("pdf-panel");
+  panel.classList.remove("open");
+  document.getElementById("pdf-frame").src="about:blank";
+};
+
+// ---- 필터/검색 이벤트 ----
+function applyFilters(resetPage=true){
+  state.q = document.getElementById("q").value.trim();
+  state.year = document.getElementById("f-year").value;
+  state.publisher = document.getElementById("f-publisher").value;
+  state.source = document.getElementById("f-source").value;
+  state.type = document.getElementById("f-type").value;
+  state.pdf_status = document.getElementById("f-pdf").value;
+  state.fav_status = document.getElementById("f-fav").value;
+  state.size = Number(document.getElementById("f-size").value) || 50;
+  if(resetPage) state.page=1;
+  loadPapers();
+}
+
+// ---- 즐겨찾기 토글 ----
+document.querySelectorAll('button.badge[data-pdf]').forEach(button=>{
+  button.onclick=()=>{
+    // Summary counts cover the whole repository, so clear other search constraints.
+    ["q","f-year","f-publisher","f-source","f-type"].forEach(id=>document.getElementById(id).value="");
+    document.getElementById("f-pdf").value=button.dataset.pdf;
+    document.getElementById("f-fav").value=button.dataset.fav;
+    applyFilters();
+  };
+});
+function bumpFav(delta){
+  const el=document.getElementById("stat-fav");
+  const n=Math.max(0,(parseInt(el.dataset.n||"0",10))+delta);
+  el.dataset.n=n; el.textContent=n.toLocaleString();
+}
+function favoriteStatus(message){
+  const restorePosition = preserveRecoPosition();
+  const el = document.getElementById('favorite-status');
+  el.hidden = !message; el.textContent = message;
+  restorePosition();
+}
+function syncFavoriteButtons(art, on){
+  document.querySelectorAll(`[data-act="fav"][data-art="${CSS.escape(art)}"]`).forEach(el => {
+    el.classList.toggle('on', on); el.textContent = on ? '★' : '☆';
+    el.disabled = pendingFavorites.has(art);
+    el.setAttribute('aria-busy', String(el.disabled));
+  });
+}
+async function saveFavoriteChanges(changes, bulk=false){
+  if(!CAN_EDIT_FAVORITES || !changes.length || changes.some(c=>pendingFavorites.has(c.art))) return;
+  const delta = changes.reduce((n,c)=>n + Number(c.on) - Number(c.before), 0);
+  changes.forEach(c=>{ pendingFavorites.add(c.art); favoriteOverrides.set(c.art, c.on); syncFavoriteButtons(c.art,c.on); });
+  ++recoRequestNumber; clearTimeout(recoPoll);
+  bumpFav(delta); renderRecoItems(); favoriteStatus('즐겨찾기 저장 중…');
+  let saved = false;
+  try {
+    const response = await fetch(API+(bulk ? '/api/favorites/bulk' : '/api/favorite'), {
+      method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},
+      body:JSON.stringify(bulk ? {article_numbers:changes.map(c=>c.art)} : {article_number:changes[0].art, favorite:changes[0].on})
+    });
+    const result = await response.json();
+    if(!response.ok || !result.ok) throw new Error(result.error || '저장 실패');
+    saved = true;
+    bumpFav((result.favorite_delta ?? delta) - delta);
+    changes.forEach(c=>{
+      const cell = document.querySelector(`[data-citation-art="${CSS.escape(c.art)}"]`);
+      // Bulk add preserves existing citation metadata. Only single-item responses contain it.
+      if(cell && !bulk){
+        const hasCitation = c.on && result.citation_count != null;
+        cell.textContent = hasCitation ? Number(result.citation_count).toLocaleString() : '-';
+        cell.title = hasCitation ? '저장된 인용수' : c.on ? '인용수 업데이트 대기 중' : '즐겨찾기 논문만 집계';
+      }
+    });
+    favoriteStatus(bulk ? `${result.changed_count}편 추가 완료 · 추천은 백그라운드에서 갱신합니다.` : '저장 완료 · 추천은 백그라운드에서 갱신합니다.');
+  } catch(error) {
+    bumpFav(-delta);
+    changes.forEach(c=>favoriteOverrides.set(c.art, c.before));
+    favoriteStatus('즐겨찾기 저장을 확인하지 못해 화면을 복원했습니다. '+error.message+' · 다시 시도하거나 새로고침해 주세요.');
+  } finally {
+    changes.forEach(c=>{ pendingFavorites.delete(c.art); syncFavoriteButtons(c.art, favoriteOverrides.get(c.art)); });
+    renderRecoItems(); scheduleRecommendationRefresh();
+    if(saved && state.fav_status) loadPapers();
+    if(saved){
+      try {
+        const response = await fetch(API+'/api/meta');
+        if(!response.ok) throw new Error('집계 갱신 실패');
+        renderStats(await response.json());
+      } catch(error) {
+        favoriteStatus('즐겨찾기는 저장됐지만 상단 집계를 갱신하지 못했습니다. 새로고침해 주세요.');
+      }
+    }
+  }
+}
+async function toggleFav(art, el){
+  const before = favoriteOverrides.has(art) ? favoriteOverrides.get(art) : el.classList.contains('on');
+  return saveFavoriteChanges([{art, before, on:!before}]);
+}
+
+// ---- 즐겨찾기 기반 추천 ----
+function recoRowHtml(it){
+  const pdfBtn = it.pdf_available
+    ? `<button class="pdf-btn" data-act="pdf" data-art="${esc(it.article_number)}" data-title="${esc(it.title)}">PDF</button>`
+    : `<button class="pdf-btn" disabled title="PDF 없음">PDF</button>`;
+  const xplore = it.url
+    ? `<a class="link-x" href="${esc(proxyUrl(it.url))}" target="_blank" rel="noopener">${esc(linkLabel(it))}</a>` : "";
+  const star = favoriteButton(it);
+  const reason = it.recommendation_basis === 'ai'
+    ? `<div class="reco-reason">AI ${esc(it.ai_score)} · ${esc(it.ai_topic)} — ${esc(it.ai_reason)}<details><summary>추천 근거</summary><div>관련 즐겨찾기: <a href="/ai?paper=${encodeURIComponent(it.ai_favorite_id)}" target="_blank" rel="noopener">${esc(it.ai_favorite_title)}</a></div><div>후보 원문: “${esc(it.ai_evidence)}”</div><div>${it.ai_evidence_basis === 'title_only' ? '제목 기반 평가 · 초록 없음' : '제목·저장 초록 기반 평가'}</div></details></div>`
+    : `<div class="reco-reason">${esc(it.interest_topic || '관련 연구')} · ${esc(it.recommendation_reason || '즐겨찾기 제목 기반')}</div><div class="authors-cell">${it.related_favorite_title ? '<details><summary>관련 즐겨찾기</summary>'+esc(it.related_favorite_title)+'<br>'+esc((it.shared_terms||[]).join(', '))+'</details>' : '키워드 추천'}</div>`;
+  const feedback = CAN_EDIT_FAVORITES && lastRecoData?.feedback_available
+    ? `<div><button class="btn btn-ghost" data-act="reco-feedback" data-art="${esc(it.article_number)}" data-feedback="dismissed">관심 없음</button> <button class="btn btn-ghost" data-act="reco-feedback" data-art="${esc(it.article_number)}" data-feedback="reviewed">검토 완료</button></div>` : '';
+  return `<tr data-reco-id="${esc(it.article_number)}">
+    <td class="col-star">${star}</td>
+    <td class="title-cell">${esc(it.title)}
+      <div class="authors-cell">${esc(it.authors)||''}</div>
+      ${reason}
+      ${feedback}
+    </td>
+    <td><span class="src-badge" style="background:${colorFor(it.source_name)}">${esc(it.source_name)||'?'}</span>
+        <span class="src-type">${esc(it.year)||''}</span></td>
+    <td class="col-src2">${xplore}${pdfBtn}</td>
+  </tr>`;
+}
+
+let lastRecoItems = [];
+let lastRecoGroups = [];
+let lastRecoData = null;
+let selectedRecoSource = "";
+let selectedRecoGroup = null;
+let recoPoll = null, recoRequestNumber = 0;
+const pendingRecoFeedback = new Set();
+async function loadRecoFeedback(){
+  try {
+    const response = await fetch('/api/recommendations/feedback');
+    if(!response.ok) throw new Error('추천 기록을 불러오지 못했습니다.');
+    const data = await response.json();
+    document.getElementById('reco-feedback-list').innerHTML = data.items.length ? data.items.map(it=>
+      `<p>${esc(it.title)} · ${it.action==='dismissed'?'관심 없음':'검토 완료'} ${CAN_EDIT_FAVORITES ? '<button class="btn btn-ghost" data-act="reco-feedback" data-art="'+esc(it.article_number)+'" data-feedback="restore">복원</button>' : ''}</p>`).join('') : '<p>제외한 논문이 없습니다.</p>';
+  } catch(error) { document.getElementById('reco-feedback-list').textContent = error.message; }
+}
+document.getElementById('reco-feedback').addEventListener('toggle', event=>{
+  if(event.target.open) loadRecoFeedback();
+});
+async function saveRecoFeedback(article, action, button){
+  if(!CAN_EDIT_FAVORITES || pendingRecoFeedback.has(article)) return;
+  pendingRecoFeedback.add(article);
+  if(button) button.disabled = true;
+  try {
+    const response = await fetch('/api/recommendations/feedback', {method:'POST',
+      headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF_TOKEN},
+      body:JSON.stringify({article_number:article,action})});
+    const result = await response.json();
+    if(!response.ok) throw new Error(result.error || '추천 기록 저장 실패');
+    ++recoRequestNumber; // Ignore any pre-feedback response still in flight.
+    if(action !== 'restore' && lastRecoData){
+      lastRecoData.items = lastRecoData.items.filter(it=>String(it.article_number)!==article);
+      renderRecoItems();
+    }
+    favoriteStatus(action==='restore' ? '추천 후보로 복원했습니다.' : '추천에서 제외했습니다. 제외한 논문 목록에서 복원할 수 있습니다.');
+    if(document.getElementById('reco-feedback').open) await loadRecoFeedback();
+    scheduleRecommendationRefresh();
+  } catch(error) { favoriteStatus(error.message); }
+  finally { pendingRecoFeedback.delete(article); if(button) button.disabled = false; }
+}
+function scheduleRecommendationRefresh(){
+  ++recoRequestNumber;
+  clearTimeout(recoPoll);
+  recoPoll = setTimeout(loadRecommendations, 1000);
+}
+function renderRecoTabs(groups){
+  const shell = document.getElementById('reco-tabs-shell');
+  const tabs = document.getElementById('reco-tabs');
+  shell.hidden = !groups.length;
+  let previousType = null;
+  const html = groups.map(group=>{
+    const type = group.type || 'other';
+    const kind = type !== previousType
+      ? `<span class="reco-tab-kind">${esc(TYPE_KO[type]||type)}</span>` : '';
+    previousType = type;
+    const active = group.name === selectedRecoSource;
+    return `${kind}<button type="button" role="tab" class="reco-tab ${active?'active':''}" aria-selected="${active}" tabindex="${active?'0':'-1'}" data-act="reco-tab" data-source="${esc(group.name)}">${esc(group.name)}<small>${group.items.length}</small></button>`;
+  }).join('');
+  if(tabs._recoHtml !== html){
+    const left = tabs.scrollLeft;
+    tabs.innerHTML = html;
+    tabs._recoHtml = html;
+    tabs.scrollLeft = left;
+  }
+}
+function preserveRecoPosition(ids=null){
+  const main = document.querySelector('.main');
+  if(!main) return ()=>{};
+  const top = main.scrollTop;
+  const viewport = main.getBoundingClientRect();
+  const anchor = [...document.getElementById('reco-tbody').children].find(row=>
+    row.dataset.recoId && (!ids || ids.has(row.dataset.recoId)) &&
+    row.getBoundingClientRect().bottom > viewport.top && row.getBoundingClientRect().top < viewport.bottom);
+  const offset = anchor?.getBoundingClientRect().top;
+  return ()=>{
+    if(anchor?.isConnected) main.scrollTop += anchor.getBoundingClientRect().top - offset;
+    else main.scrollTop = top;
+  };
+}
+function reconcileRecoRows(items, emptyHtml){
+  const tbody = document.getElementById('reco-tbody');
+  const wanted = new Set(items.map(it=>String(it.article_number)));
+  for(const row of [...tbody.children]) if(!wanted.has(row.dataset.recoId)) row.remove();
+  if(!items.length){
+    if(tbody.innerHTML !== emptyHtml) tbody.innerHTML = emptyHtml;
+    return;
+  }
+  const existing = new Map([...tbody.children].map(row=>[row.dataset.recoId,row]));
+  items.forEach((item,index)=>{
+    const id = String(item.article_number), html = recoRowHtml(item);
+    let row = existing.get(id);
+    if(!row || row._recoHtml !== html){
+      const openDetails = row ? [...row.querySelectorAll('details')].map(detail=>detail.open) : [];
+      const fragment = document.createElement('tbody');
+      fragment.innerHTML = html;
+      const replacement = fragment.firstElementChild;
+      replacement._recoHtml = html;
+      [...replacement.querySelectorAll('details')].forEach((detail,i)=>{detail.open=!!openDetails[i];});
+      if(row) row.replaceWith(replacement);
+      row = replacement;
+    }
+    if(tbody.children[index] !== row) tbody.insertBefore(row,tbody.children[index] || null);
+  });
+}
+function renderRecoItems(){
+  const d = lastRecoData;
+  if(!d) return;
+  const availableItems = (d.items || []).filter(it=>!favoriteOverrides.get(String(it.article_number)));
+  const restorePosition = preserveRecoPosition(new Set(availableItems.map(it=>String(it.article_number))));
+  const groups = (d.groups || []).map(group=>({
+    ...group,
+    items:availableItems.filter(it=>it.source_name===group.name).slice(0,RECO_PER_SOURCE)
+  }));
+  // Keep an emptied selected tab instead of jumping to a different venue.
+  if(selectedRecoGroup?.name===selectedRecoSource && !groups.some(group=>group.name===selectedRecoSource)){
+    groups.push({...selectedRecoGroup,items:[]});
+  }
+  const typeOrder = {journal:0,conference:1};
+  groups.sort((a,b)=>(typeOrder[a.type]??2)-(typeOrder[b.type]??2) || a.name.localeCompare(b.name,'en'));
+  if(!selectedRecoSource || !groups.some(group=>group.name===selectedRecoSource)) selectedRecoSource = groups[0]?.name || '';
+  selectedRecoGroup = groups.find(group=>group.name===selectedRecoSource) || null;
+  lastRecoGroups = groups;
+  renderRecoTabs(groups);
+  lastRecoItems = groups.find(group=>group.name===selectedRecoSource)?.items || [];
+  document.getElementById('btn-reco-addall').disabled = !CAN_EDIT_FAVORITES || !!pendingFavorites.size || !lastRecoItems.length;
+  reconcileRecoRows(lastRecoItems, `<tr><td colspan="4"><div class="empty">${pendingFavorites.size ? '즐겨찾기 저장 중…' : d.refresh?.status === 'refreshing' ? '추천을 백그라운드에서 준비하고 있습니다…' : d.fav_count ? '이 탭에 남은 추천이 없습니다. 다른 탭을 선택하거나 새 추천을 기다려 주세요.' : '즐겨찾기를 먼저 등록하면 추천이 표시됩니다.'}</div></td></tr>`);
+  restorePosition();
+}
+function selectRecoSource(source){
+  selectedRecoSource = String(source || '');
+  renderRecoItems();
+  document.querySelector(`[data-act="reco-tab"][data-source="${CSS.escape(selectedRecoSource)}"]`)?.scrollIntoView({block:'nearest',inline:'center'});
+}
+async function loadRecommendations(){
+  if(pendingFavorites.size){ scheduleRecommendationRefresh(); return; }
+  const requestNumber = ++recoRequestNumber;
+  clearTimeout(recoPoll);
+  const sub = document.getElementById("reco-sub");
+  const tbody = document.getElementById("reco-tbody");
+  const addAllBtn = document.getElementById("btn-reco-addall");
+  if(!lastRecoData) sub.textContent = "불러오는 중…";
+  try{
+    const mode = document.getElementById('reco-mode').value;
+    const r = await fetch(API+"/api/recommendations?mode="+encodeURIComponent(mode)+"&per_source="+RECO_PER_SOURCE);
+    if(!r.ok) throw new Error('추천 조회 실패');
+    const d = await r.json();
+    if(requestNumber !== recoRequestNumber) return;
+    const restorePosition = preserveRecoPosition(new Set((d.items||[]).filter(it=>!favoriteOverrides.get(String(it.article_number))).map(it=>String(it.article_number))));
+    const ai = d.ai || {};
+    const busy = ['queued','running'].includes(ai.status);
+    const aiButton = document.getElementById('btn-reco-ai');
+    if(aiButton){ aiButton.disabled = busy; aiButton.textContent = busy ? 'AI 갱신 중…' : 'AI 추천 갱신'; }
+    if(d.refresh?.status === 'refreshing') recoPoll = setTimeout(loadRecommendations, 2000);
+    else if(d.refresh?.status === 'failed') recoPoll = setTimeout(loadRecommendations, 30000);
+    else if(busy || ai.scheduled) recoPoll = setTimeout(loadRecommendations, 12000);
+    const profileBox = document.getElementById('reco-profile');
+    profileBox.hidden = !d.profile;
+    document.getElementById('reco-profile-text').textContent = d.profile
+      ? `${(d.profile.topics||[]).length}개 관심 분야: ${(d.profile.topics||[]).map(t=>t.name).join(', ')} · 즐겨찾기 ${d.profile.favorite_count}편의 전체 키워드와 출처별 표본 ${d.profile.sample_count}편을 사용했습니다. 점수는 AI의 읽기 우선순위이며 측정값의 정확도는 아닙니다.` : '';
+    lastRecoData = d;
+    document.getElementById('reco-feedback').hidden = !d.feedback_available;
+    renderRecoItems();
+    const lines = [
+      `<div class="reco-count">즐겨찾기 ${d.fav_count.toLocaleString()}건 · 출처 탭 ${lastRecoGroups.length}개 · ${selectedRecoSource ? esc(selectedRecoSource)+' '+lastRecoItems.length+'건 표시 · ' : ''}${d.engine === 'hybrid' ? 'AI 평가 통과 추천' : '규칙 기반 '+esc(d.modes?.[mode] || '추천')}${d.total_limit ? ' · 전체 최대 '+esc(d.total_limit)+'편' : ''} · 출처당 최대 ${d.per_source}편</div>`
+    ];
+    if(ai.generated_at) lines.push(`<div>${esc(ai.model)} · ${esc(ai.generated_at.replace('T',' '))} 생성 · AI 평가 ${ai.evaluated_count}/${ai.attempted_count ?? ai.candidate_count}편${ai.qualified_count !== undefined ? ' · 기준 통과 '+esc(ai.qualified_count)+'편' : ''}${ai.stale?' · 갱신 예정':''}</div>`);
+    if(ai.ranking_mode === 'pair') lines.push(`<div>평가 재사용 ${esc(ai.cached_count)}편 · 신규 평가 ${esc(ai.new_evaluated_count)}/${esc(ai.new_attempted_count)}편 · 탐색 순위는 현재 즐겨찾기 분포로 재계산합니다.</div>`);
+    if(ai.scheduled && !busy) lines.push(`<div>연속 변경을 모으는 중 · 마지막 변경 후 ${esc(ai.auto_delay_seconds || 45)}초 대기 뒤 자동 갱신합니다. 수동 갱신은 바로 요청할 수 있습니다.</div>`);
+    if(busy) lines.push(`<div>${esc(ai.progress || 'AI 추천 갱신 대기 중')} · 저장된 추천을 표시합니다.</div>`);
+    if(d.refresh?.status === 'refreshing') lines.push('<div>추천 목록을 백그라운드에서 재계산하고 있습니다. 추가한 논문은 바로 제외됩니다.</div>');
+    if(d.refresh?.message) lines.push(`<div>${esc(d.refresh.message)}</div>`);
+    if(ai.error) lines.push(`<div>${esc(ai.error)}</div>`);
+    if(ai.mode_fallback && ['explore','diverse'].includes(mode)) lines.push('<div>AI 평가가 준비되면 선택한 탐색 모드가 적용됩니다.</div>');
+    if(ai.message) lines.push(`<div>${esc(ai.message)}</div>`);
+    if(d.profile_terms && d.profile_terms.length)
+      lines.push(`<div>전체 키워드: ${esc(d.profile_terms.slice(0,10).join(", "))}</div>`);
+    sub.innerHTML = lines.join("");
+    restorePosition();
+  }catch(e){
+    if(requestNumber !== recoRequestNumber) return;
+    sub.textContent = "추천을 새로 불러오지 못했습니다. 기존 목록은 유지됩니다. 새로고침으로 다시 시도해 주세요.";
+    if(!lastRecoData) tbody.innerHTML = `<tr><td><div class="empty">추천을 불러오지 못했습니다.</div></td></tr>`;
+  }
+}
+document.getElementById("btn-reco-refresh").onclick = loadRecommendations;
+document.getElementById('reco-mode').onchange = loadRecommendations;
+const recoAiButton = document.getElementById('btn-reco-ai');
+if(recoAiButton) recoAiButton.onclick = async () => {
+  recoAiButton.disabled = true;
+  try {
+    const response = await fetch('/api/recommendations/refresh', {method:'POST', headers:{'X-CSRF-Token':CSRF_TOKEN}});
+    const result = await response.json();
+    if(!response.ok) throw new Error(result.error || 'AI 추천 갱신 실패');
+    await loadRecommendations();
+    if(result.status === 'cooldown') document.getElementById('reco-sub').textContent = '최근 갱신 직후입니다. 잠시 후 다시 갱신해 주세요.';
+  } catch(error) {
+    document.getElementById('reco-sub').textContent = error.message;
+    recoAiButton.disabled = false;
+  }
+};
+
+async function addAllRecommendations(){
+  if(!CAN_EDIT_FAVORITES || pendingFavorites.size || !lastRecoItems.length) return;
+  const btn = document.getElementById("btn-reco-addall");
+  btn.textContent = "추가 중…";
+  const articles = [...new Set(lastRecoItems.map(it=>String(it.article_number)))];
+  try { await saveFavoriteChanges(articles.map(art=>({art,before:false,on:true})), true); }
+  finally { btn.textContent = "현재 탭 전체 ★ 추가"; }
+}
+document.getElementById("btn-reco-addall").onclick = addAllRecommendations;
+const recoTabs = document.getElementById('reco-tabs');
+const scrollRecoTabs = direction=>recoTabs.scrollBy({left:direction*Math.max(240,recoTabs.clientWidth*.75),behavior:'smooth'});
+document.getElementById('reco-tabs-prev').onclick = ()=>scrollRecoTabs(-1);
+document.getElementById('reco-tabs-next').onclick = ()=>scrollRecoTabs(1);
+let deb;
+document.getElementById("q").addEventListener("input",()=>{ clearTimeout(deb); deb=setTimeout(()=>applyFilters(),380); });
+["f-year","f-publisher","f-source","f-type","f-pdf","f-fav","f-size"].forEach(id=>
+  document.getElementById(id).addEventListener("change",()=>applyFilters()));
+document.getElementById("btn-search").onclick=()=>applyFilters();
+document.getElementById("btn-reset").onclick=()=>{
+  document.getElementById("q").value="";
+  document.getElementById("f-year").value="";
+  document.getElementById("f-publisher").value="";
+  document.getElementById("f-source").value="";
+  document.getElementById("f-type").value="";
+  document.getElementById("f-pdf").value="";
+  document.getElementById("f-fav").value="";
+  document.getElementById("f-size").value="50";
+  applyFilters();
+};
+
+// ---- PDF/즐겨찾기 버튼 클릭 위임 (data-act 기반) ----
+// 예전엔 onclick="openPdf('...',${JSON.stringify(title)})" 처럼 제목을 인라인
+// onclick 속성에 직접 넣었는데, JSON.stringify 가 만드는 큰따옴표가 HTML
+// 속성의 큰따옴표와 충돌해서 제목에 큰따옴표가 없어도 속성이 중간에 끊기는
+// 버그가 있었음(예: "Mach–Zehnder" 같은 제목에서 재현). data-* 속성 + esc()로
+// HTML 이스케이프하고 이벤트 위임으로 처리하면 이 문제가 원천적으로 없음.
+document.body.addEventListener("click", (e)=>{
+  const el = e.target.closest("[data-act]");
+  if(!el) return;
+  if(el.dataset.act === "pdf"){
+    openPdf(el.dataset.art, el.dataset.title);
+  }else if(el.dataset.act === "fav"){
+    toggleFav(el.dataset.art, el);
+  }else if(el.dataset.act === "reco-tab"){
+    selectRecoSource(el.dataset.source);
+  }else if(el.dataset.act === "reco-feedback"){
+    saveRecoFeedback(el.dataset.art, el.dataset.feedback, el);
+  }
+});
+
+// ---- init ----
+(async()=>{ await loadMeta(); await loadPapers(); loadRecommendations(); })();
+</script>
+</body>
+</html>

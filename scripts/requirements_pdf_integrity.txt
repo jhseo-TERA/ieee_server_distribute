@@ -1,0 +1,2 @@
+pypdf==6.14.2
+cryptography==50.0.1

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>로그인 · Paper Repository</title>
+  <style>
+    :root{--wine:#6B1E2E;--wine-dark:#4A1520;--line:#dedfe3;--muted:#6b7280}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:#f4f5f7;font-family:"Segoe UI",Roboto,"Malgun Gothic",sans-serif;color:#1f2430}
+    .card{width:min(100%,400px);background:#fff;border:1px solid #e3e5e9;border-radius:14px;box-shadow:0 14px 42px rgba(35,20,24,.13);overflow:hidden}
+    .head{padding:26px 28px;background:linear-gradient(180deg,var(--wine),var(--wine-dark));color:#fff}
+    .mark{display:inline-block;background:#fff;color:var(--wine);border-radius:6px;padding:3px 8px;font-size:13px;font-weight:800;margin-bottom:12px}
+    h1{font-size:22px;margin:0 0 5px}
+    .head p{font-size:13px;opacity:.82;margin:0}
+    form{padding:26px 28px 28px}
+    label{display:block;font-size:13px;font-weight:650;margin:0 0 7px}
+    input[type=text],input[type=password]{width:100%;height:43px;border:1px solid var(--line);border-radius:8px;padding:0 12px;font-size:15px;margin-bottom:17px}
+    input:focus{outline:2px solid rgba(107,30,46,.2);border-color:var(--wine)}
+    button{width:100%;height:44px;border:0;border-radius:8px;background:var(--wine);color:#fff;font-size:15px;font-weight:700;cursor:pointer}
+    button:hover{background:#81263a}
+    .error{background:#fff1f2;border:1px solid #fecdd3;color:#9f1239;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:17px}
+    .note{color:var(--muted);font-size:12px;text-align:center;margin:16px 0 0}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="head">
+      <span class="mark">IEEE · Optica · Nature</span>
+      <h1>Paper Repository</h1>
+      <p>등록된 계정으로 로그인해 주세요.</p>
+    </div>
+    <form method="post" action="{{ url_for('login') }}" autocomplete="on">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="next" value="{{ next_url }}">
+      {% if error %}<div class="error" role="alert">{{ error }}</div>{% endif %}
+      <label for="username">ID</label>
+      <input id="username" name="username" type="text" autocomplete="username" required autofocus>
+      <label for="password">비밀번호</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+      <button type="submit">로그인</button>
+      <p class="note">비밀번호는 원문이 아닌 scrypt 해시로 서버에 저장됩니다.</p>
+    </form>
+  </main>
+</body>
+</html>

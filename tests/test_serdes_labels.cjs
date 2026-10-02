@@ -1,0 +1,12 @@
+const assert=require('node:assert/strict');
+const labels=require('../web/static/serdes_labels.js');
+for(const [value,expected] of Object.entries({tx:'TX',rx:'RX',trx:'TRX',tx_rx:'TX / RX',rx_tx:'RX / TX',full_link:'Full link',driver_only:'Driver only',cdr_pll:'CDR PLL'}))assert.equal(labels.component(value),expected);
+for(const [value,expected] of Object.entries({pam4:'PAM-4',PAM4:'PAM-4',pam_4:'PAM-4',pam8:'PAM-8',nrz:'NRZ',qpsk:'QPSK',unknown:'Unknown'}))assert.equal(labels.modulation(value),expected);
+assert.equal(labels.citationSource('crossref'),'Crossref');
+assert.equal(labels.citationSource('ieee'),'IEEE Xplore');
+assert.equal(labels.berScope('pre_fec'),'pre-FEC');
+assert.equal(labels.berScope('post_fec'),'post-FEC');
+assert.equal(labels.component(' RX '),'RX');
+assert.equal(labels.modulation('pam3 / duo'),'PAM-3 / DUO');
+assert.equal(labels.modulation('pam4 / nrz'),'PAM-4 / NRZ');
+console.log('SerDes label cases passed');

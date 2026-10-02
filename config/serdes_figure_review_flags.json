@@ -1,0 +1,32 @@
+{
+  "8706047": {
+    "pdf_sha256": "9f72f902811a315632a5b3cd145ff6e9f476c58aeba343094c6ab1ce7045d088",
+    "reasons": ["crop_contamination"],
+    "evidence": "2026-09-14 visual QA: extracted CDR region includes the page header. Crop requires source review."
+  },
+  "10745711": {
+    "pdf_sha256": "ccd5b004d4d6fb4daa861dc22b63914266fe0741e9a2a00b44a5ab42ab759479",
+    "reasons": ["implementation_unconfirmed"],
+    "evidence": "2026-09-14 visual QA: generic LPO transmitter context; correspondence to the measured linear driver is not established."
+  },
+  "6387332": {
+    "pdf_sha256": "1ee1d8c6a592c63ac14ca9d5e8660918b6f4ac97af0e153a930ff26647c38db0",
+    "reasons": ["implementation_unconfirmed"],
+    "evidence": "2026-09-14 visual QA: Fig. 30 is a multiple-channel extension topology, not yet established as the measured transmitter implementation."
+  },
+  "11296909": {
+    "pdf_sha256": "19f5efb715a8339c6a7eeb226a4434e9cc6eb279763e6d8b47c1fdea4956d7e0",
+    "reasons": ["subblock_not_top_level"],
+    "evidence": "2026-09-14 visual QA: selected Fig. 10 depicts a sub-ADC, not the overall CDR."
+  },
+  "10665897": {
+    "pdf_sha256": "7b699c177c9c26247b4c3da75c5fa3b99cd99ebeec0ef9cfd6a75facc79d8ac8",
+    "reasons": ["crop_contamination"],
+    "evidence": "2026-09-14 visual QA: body text is visible along the left edge of the architecture crop."
+  },
+  "10185362": {
+    "pdf_sha256": "2334d84ca9ae3a6cfa94419da9232fb770aae2d30e1a5eae2e3b381d9e809fe8",
+    "reasons": ["crop_contamination"],
+    "evidence": "2026-09-14 visual QA: recovered caption correctly locates the transmitter but neighboring text remains at the crop's top edge."
+  }
+}

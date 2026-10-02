@@ -1,0 +1,7 @@
+{
+  "survey_spreadsheet_id": "",
+  "survey_key_prefix": "survey",
+  "survey_sync_version": "user-survey-sync-1.0",
+  "survey_workbook_name": "user_survey.xlsx",
+  "survey_report_name": "user_cross_validation.json"
+}

@@ -1,0 +1,991 @@
+{% set survey_ai_visible = survey_ai_visible|default(false) %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="SQL 논문 저장소를 기반으로 한 대화형 SerDes 성능·문헌 서베이">
+<meta property="og:title" content="SerDes Performance Survey">
+<meta property="og:description" content="Wireline SerDes 연구 동향, 성능 단서와 원문을 한곳에서 탐색합니다.">
+<title>SerDes Performance Survey</title>
+{% if survey_ai_visible %}<link rel="stylesheet" href="{{ url_for('static', filename='serdes_ai.css') }}">{% endif %}
+<style>
+  :root{
+    --ink:#071c2c;--ink-2:#123249;--paper:#f5f2eb;--card:#fffdf8;
+    --cyan:#0ca6a6;--cyan-light:#d9f1ed;--coral:#f05f45;--amber:#e7a528;
+    --line:#d8d8d1;--muted:#65717a;--white:#fff;--shadow:0 18px 45px rgba(7,28,44,.09)
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Segoe UI",Roboto,"Malgun Gothic",sans-serif;line-height:1.5}
+  button,input,select{font:inherit}
+  a{color:inherit}
+  .topbar{height:64px;padding:0 clamp(20px,4vw,68px);display:flex;align-items:center;gap:24px;background:var(--ink);color:#fff;position:sticky;top:0;z-index:50;border-bottom:1px solid rgba(255,255,255,.12)}
+  .brand{font-weight:800;letter-spacing:.02em;text-decoration:none;display:flex;align-items:center;gap:10px;white-space:nowrap}
+  .brand-mark{width:28px;height:28px;border-radius:50%;border:7px solid var(--cyan);box-shadow:inset 0 0 0 2px var(--ink)}
+  .topnav{margin-left:auto;display:flex;align-items:center;gap:8px}
+  .nav-link,.account-label{font-size:13px;color:#dbe5e9;text-decoration:none;padding:7px 10px;border-radius:7px}
+  .nav-link:hover{background:rgba(255,255,255,.09);color:#fff}
+  .logout-form{margin:0}
+  .logout{border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;padding:7px 11px;border-radius:7px;cursor:pointer}
+  .logout:hover{background:rgba(255,255,255,.09)}
+
+  .hero{background:var(--ink);color:#fff;padding:64px clamp(20px,6vw,96px) 70px;position:relative;overflow:hidden}
+  .hero:before{content:"";position:absolute;width:430px;height:430px;border:1px solid rgba(12,166,166,.25);border-radius:50%;right:-160px;top:-230px;box-shadow:0 0 0 72px rgba(12,166,166,.05),0 0 0 144px rgba(12,166,166,.035)}
+  .hero-grid{max-width:1480px;margin:auto;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(330px,.65fr);gap:50px;align-items:start;position:relative}
+  .eyebrow{font-size:12px;font-weight:800;letter-spacing:.17em;text-transform:uppercase;color:#58d0c7;margin-bottom:14px}
+  h1{font-size:clamp(42px,6.2vw,88px);line-height:.98;letter-spacing:-.055em;margin:0 0 22px;max-width:900px}
+  .lede{font-size:clamp(17px,2vw,22px);color:#c8d6dd;max-width:760px;margin:0 0 30px}
+  .scope{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.18);border-radius:12px;overflow:hidden;max-width:880px}
+  .scope-item{background:rgba(255,255,255,.045);padding:17px 18px;min-height:94px}
+  .scope-item b{display:block;color:#fff;font-size:13px;margin-bottom:5px}
+  .scope-item span{font-size:12.5px;color:#aebfc7}
+  .hero-actions{display:flex;gap:10px;margin-top:24px;flex-wrap:wrap}
+  .action{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 16px;border-radius:8px;font-weight:750;text-decoration:none;font-size:14px;border:1px solid rgba(255,255,255,.25)}
+  .action.primary{background:var(--cyan);border-color:var(--cyan);color:#031b27}
+  .action.secondary{color:#fff;background:rgba(255,255,255,.05)}
+
+  .calculator{background:#0d293b;border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:24px;box-shadow:0 24px 64px rgba(0,0,0,.22)}
+  .calc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:20px}
+  .calc-head h2{font-size:20px;margin:0 0 4px}
+  .calc-head p{margin:0;color:#9fb3bd;font-size:12.5px}
+  .calc-badge{background:rgba(12,166,166,.17);color:#71ded6;border:1px solid rgba(113,222,214,.25);padding:5px 8px;border-radius:99px;font-size:10px;font-weight:800;letter-spacing:.08em}
+  .calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .field label{display:block;color:#aebfc7;font-size:11.5px;margin:0 0 5px}
+  .field input,.field select{width:100%;height:42px;border:1px solid #315063;background:#071f30;color:#fff;border-radius:8px;padding:0 11px;outline:none}
+  .field input:focus,.field select:focus{border-color:#43c9c0;box-shadow:0 0 0 3px rgba(67,201,192,.12)}
+  .calc-output{margin-top:16px;background:#061b2a;border-left:4px solid var(--coral);padding:15px 16px;border-radius:5px 10px 10px 5px}
+  .calc-output span{display:block;color:#92a8b3;font-size:11px;text-transform:uppercase;letter-spacing:.09em}
+  .calc-output strong{display:block;font-size:31px;letter-spacing:-.035em;margin:2px 0}
+  .calc-output small{color:#8fa3ae}
+
+  .stat-strip{max-width:1480px;margin:-28px auto 0;padding:0 clamp(20px,4vw,68px);position:relative;z-index:4;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:19px 20px;box-shadow:var(--shadow)}
+  .stat b{display:block;font-size:25px;letter-spacing:-.03em;line-height:1.1}
+  .stat span{display:block;color:var(--muted);font-size:12px;margin-top:6px}
+
+  main{max-width:1480px;margin:0 auto;padding:58px clamp(20px,4vw,68px) 80px}
+  .section-head{display:flex;justify-content:space-between;gap:30px;align-items:end;margin-bottom:20px}
+  .section-head h2{font-size:clamp(28px,3vw,42px);line-height:1.05;letter-spacing:-.035em;margin:0}
+  .section-head p{max-width:620px;margin:0;color:var(--muted);font-size:14px}
+  .analytics{display:grid;grid-template-columns:1.35fr .65fr;gap:16px;margin-bottom:56px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;min-width:0}
+  .panel-title{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+  .panel-title h3{margin:0;font-size:15px}
+  .panel-title span{color:var(--muted);font-size:11.5px}
+  .trend{height:252px;display:flex;align-items:end;gap:clamp(4px,.7vw,11px);padding:12px 4px 44px;border-bottom:1px solid var(--line);position:relative;overflow-x:auto}
+  .trend:before,.trend:after{content:"";position:absolute;left:0;right:0;border-top:1px dashed #dcddd7}
+  .trend:before{top:33%}.trend:after{top:66%}
+  .trend-col{height:100%;flex:1;min-width:10px;display:flex;align-items:end;position:relative;z-index:1}
+  .trend-bar{width:100%;height:var(--h);min-height:3px;background:linear-gradient(180deg,var(--cyan),#087f86);border-radius:5px 5px 1px 1px;position:relative;transition:height .35s ease}
+  .trend-bar:hover{background:var(--coral)}
+  .trend-bar i{display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);font-style:normal;background:var(--ink);color:#fff;padding:3px 6px;border-radius:4px;font-size:10px;white-space:nowrap}
+  .trend-bar:hover i{display:block}
+  .trend-year{position:absolute;top:calc(100% + 12px);left:50%;transform:translateX(-50%) rotate(-40deg);font-size:10px;font-weight:600;color:#53626c;transform-origin:top left;white-space:nowrap}
+  .source-bars{display:flex;flex-direction:column;gap:12px}
+  .source-line{display:grid;grid-template-columns:minmax(70px,120px) 1fr 42px;gap:10px;align-items:center;font-size:12px}
+  .source-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:650}
+  .source-track{height:10px;background:#e9ebe6;border-radius:99px;overflow:hidden}
+  .source-fill{height:100%;width:var(--w);background:var(--coral);border-radius:99px}
+  .source-count{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+
+  .performance-section{scroll-margin-top:84px;margin-bottom:60px}
+  .perf-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .perf-toolbar label{font-size:12px;color:var(--muted)}
+  .perf-toolbar select{height:36px;border:1px solid var(--line);border-radius:7px;background:#fff;padding:0 10px;color:var(--ink)}
+  .coverage-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin:0 0 10px}
+  .coverage-item{background:var(--ink);color:#fff;border-radius:10px;padding:13px 15px;min-width:0}
+  .coverage-item b{display:block;font-size:19px;line-height:1.1}
+  .coverage-item span{display:block;color:#aebfc7;font-size:10.5px;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .coverage-item em{font-style:normal;color:#65d6d0;font-size:10px;margin-left:4px}
+  .fom-readiness{display:grid;grid-template-columns:1.3fr repeat(4,minmax(0,1fr));gap:8px;align-items:stretch;margin:0 0 14px}
+  .fom-intro,.fom-item{border:1px solid var(--line);border-radius:10px;background:var(--card);padding:11px 13px}
+  .fom-intro b,.fom-item b{display:block;font-size:12px}.fom-intro span,.fom-item span{display:block;color:var(--muted);font-size:10.5px;margin-top:4px;line-height:1.35}
+  .fom-item strong{display:block;color:var(--coral);font-size:18px;line-height:1.1}
+  .performance-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .chart-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;min-width:0}
+  .chart-card.wide{grid-column:1/-1}
+  .chart-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:8px}
+  .chart-head h3{font-size:15px;margin:0 0 3px}.chart-head p{font-size:11.5px;color:var(--muted);margin:0}
+  .chart-side{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+  .chart-sample{font-size:11px;color:var(--muted);white-space:nowrap}
+  .chart-zoom{display:flex;align-items:center;gap:3px;padding:3px;background:#eef1ed;border:1px solid #dce1dd;border-radius:7px}
+  .chart-zoom button{height:25px;min-width:27px;border:0;border-radius:5px;background:#fff;color:var(--ink);padding:0 7px;cursor:pointer;font-size:11px;font-weight:750}
+  .chart-zoom button:hover{background:var(--cyan-light);color:#076c70}.chart-zoom button:disabled{opacity:.38;cursor:default;background:#fff;color:var(--muted)}
+  .chart-zoom .zoom-reset{min-width:43px}.zoom-level{min-width:39px;text-align:center;color:var(--muted);font-size:10px;font-variant-numeric:tabular-nums}
+  .chart-wrap{height:285px;position:relative}
+  .chart-wrap canvas{display:block;width:100%;height:100%;border-radius:6px;outline:none;cursor:pointer}
+  .chart-wrap canvas.zoomable{cursor:crosshair;touch-action:none}.chart-wrap canvas.panning{cursor:grabbing}
+  .chart-wrap canvas:focus{box-shadow:0 0 0 3px rgba(12,166,166,.18)}
+  .chart-legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;color:var(--muted);font-size:10px}
+  .legend-item{display:inline-flex;align-items:center;gap:4px}.legend-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .legend-separator{width:1px;height:13px;background:#cfd5d1;margin:0 2px}.tech-marker{width:9px;height:9px;display:inline-block;background:var(--ink);border:1px solid var(--ink)}
+  .tech-marker.cmos{border-radius:50%}.tech-marker.bicmos{transform:rotate(45deg);border-radius:1px}.tech-marker.other{background:transparent;border-radius:1px}
+  .performance-table-intro{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin:18px 2px 8px}
+  .performance-table-intro h3{font-size:15px;margin:0 0 4px}.performance-table-intro p{font-size:11.5px;color:var(--muted);margin:0;max-width:850px;line-height:1.5}
+  .performance-table-count{flex:0 0 auto;color:var(--muted);font-size:11.5px;font-weight:750}
+  .performance-table-wrap{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .performance-table{border-collapse:collapse;width:100%;font-size:11.5px;min-width:850px}
+  .performance-table th,.performance-table td{text-align:left;padding:10px 12px;border-bottom:1px solid #e6e6df;vertical-align:top}
+  .performance-table th{background:#eeece4;color:var(--muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em}
+  .performance-table tr:last-child td{border-bottom:0}.performance-table a{font-weight:700;text-decoration:none}.performance-table a:hover{text-decoration:underline}
+  .provenance{display:inline-flex;align-items:center;gap:4px;border-radius:99px;padding:3px 7px;background:#e8edf0;color:#3e5665;font-size:9.5px;font-weight:800;white-space:nowrap}
+  .provenance.reference_xlsx{background:#fff0ca;color:#79520b}.provenance.user_sheet{background:#e7def8;color:#60408a}.provenance.abstract{background:#dcefee;color:#087074}.provenance.pdf,.provenance.manual{background:#dfe8ff;color:#234d93}.provenance.derived_fom{background:#e8f0ff;color:#31558d}
+  .energy-basis{display:inline-block;margin-left:4px;color:#31558d;font-size:10px;font-weight:700}
+  .point-popover{position:fixed;z-index:65;width:min(460px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow-y:auto;background:#fffdf8;border:1px solid #cfd8d4;border-radius:12px;padding:17px 18px 16px;box-shadow:0 20px 55px rgba(7,28,44,.24)}
+  .point-diagram{margin:10px 0 12px;color:var(--muted);font-size:11px}
+  .point-diagram figure{margin:0}.point-diagram b{display:block;color:var(--ink);margin-bottom:6px}
+  .point-diagram img{display:block;width:100%;height:auto;max-height:230px;object-fit:contain;background:#fff;border:1px solid var(--line);border-radius:6px}
+  .point-diagram figcaption{font-size:10px;line-height:1.4;margin:5px 0;max-height:42px;overflow:auto}
+  .point-diagram small{display:block;margin-bottom:4px}.point-diagram a{color:var(--cyan)}
+  .point-popover[hidden]{display:none}.point-popover-kicker{margin:0 34px 6px 0;color:var(--cyan);font-size:10px;font-weight:850;letter-spacing:.1em;text-transform:uppercase}
+  .point-popover h3{margin:0 30px 10px 0;font-size:15px;line-height:1.4;letter-spacing:-.01em}
+  .point-popover-meta{display:flex;gap:7px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:11.5px;margin-bottom:14px}
+  .point-popover-meta span+span:before{content:"·";margin-right:7px;color:#a4adaa}
+  .point-popover-metrics{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 11px}
+  .point-popover-metrics span{border-radius:7px;background:#eef2ef;padding:6px 8px;color:#41545e;font-size:10.5px;line-height:1.35}
+  .point-popover-link{display:flex;align-items:center;justify-content:space-between;min-height:38px;padding:0 11px;border-radius:7px;background:var(--ink);color:#fff;text-decoration:none;font-size:12px;font-weight:750}
+  .point-popover-link:hover{background:var(--ink-2)}.point-popover-close{position:absolute;top:11px;right:11px;width:28px;height:28px;border:0;border-radius:6px;background:#eef1ed;color:var(--ink);cursor:pointer;font-size:17px;line-height:1}
+  .point-popover-close:hover{background:#dfe7e3}
+  .methodology{display:grid;grid-template-columns:1.2fr .8fr;gap:14px;margin-bottom:56px}
+  .method-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px}
+  .method-card h3{font-size:15px;margin:0 0 10px}.method-card p{font-size:12.5px;color:var(--muted);margin:0 0 10px}
+  .method-card ul{margin:0;padding-left:18px;color:var(--muted);font-size:12px}.method-card li+li{margin-top:6px}
+  .reference-links{display:flex;flex-direction:column;gap:7px}.reference-links a{display:flex;justify-content:space-between;gap:12px;text-decoration:none;border-bottom:1px solid #e1e1da;padding:8px 0;font-size:12.5px;font-weight:700}.reference-links a:last-child{border-bottom:0}.reference-links span{color:var(--cyan)}
+
+  .papers-section{scroll-margin-top:85px}
+  .method-note{display:flex;align-items:flex-start;gap:10px;background:#fff5df;border:1px solid #ead6a6;color:#685426;padding:12px 14px;border-radius:9px;font-size:12.5px;margin:0 0 14px}
+  .method-note b{color:#8b6220}
+  .audit-summary details{margin-top:7px}.audit-summary summary{cursor:pointer;font-weight:750;color:#8b6220}.audit-venues{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:5px 12px;margin-top:7px}.audit-venue{display:flex;justify-content:space-between;gap:8px;color:#685426}.audit-venue b{color:#3f4c50}.audit-venue small{white-space:nowrap}
+  .filters{display:grid;grid-template-columns:minmax(220px,2fr) repeat(5,minmax(112px,1fr));gap:8px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px;position:sticky;top:76px;z-index:20;box-shadow:0 8px 25px rgba(7,28,44,.06)}
+  .filters input,.filters select{height:40px;border:1px solid #d8dbd7;background:#fff;color:var(--ink);border-radius:7px;padding:0 10px;min-width:0}
+  .filters input:focus,.filters select:focus{outline:2px solid rgba(12,166,166,.2);border-color:var(--cyan)}
+  .check{height:40px;display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px;white-space:nowrap;padding:0 5px}
+  .reset{height:40px;border:0;background:var(--ink);color:#fff;border-radius:7px;padding:0 13px;cursor:pointer;font-weight:700}
+  .reset:hover{background:var(--ink-2)}
+  .result-head{display:flex;align-items:center;justify-content:space-between;gap:15px;margin:10px 2px;color:var(--muted);font-size:12.5px}
+  .result-head b{color:var(--ink)}
+  .paper-list{display:flex;flex-direction:column;gap:8px}
+  .paper-row{display:grid;grid-template-columns:70px minmax(240px,1fr) 140px 105px 210px 150px;gap:16px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:15px 16px;transition:transform .12s,border-color .12s,box-shadow .12s}
+  .paper-row:hover{transform:translateY(-1px);border-color:#a8c9c7;box-shadow:0 8px 22px rgba(7,28,44,.06)}
+  .year-cell{display:flex;flex-direction:column;align-items:flex-start;gap:6px}.year{font-size:19px;font-weight:800;color:var(--cyan)}
+  .citation-count{display:inline-flex;align-items:center;min-height:21px;padding:2px 6px;border:1px solid #d9ddda;border-radius:99px;background:#f1f2ee;color:var(--muted);font-size:10px;font-weight:750;white-space:nowrap}
+  .citation-count.active{background:#fff0ca;border-color:#ead393;color:#79520b}.citation-count.missing{font-weight:650;color:#8b938f}
+  .paper-title{font-size:14px;font-weight:750;line-height:1.35;margin:0 0 5px}
+  .authors{font-size:11.5px;color:var(--muted);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+  .citation-provider{display:block;font-size:10px;color:var(--muted);margin-top:3px}
+  .tags{display:flex;gap:5px;flex-wrap:wrap}
+  .tag{display:inline-flex;padding:3px 7px;border-radius:99px;background:var(--cyan-light);color:#096c6f;font-size:10.5px;font-weight:750}
+  .tag.block{background:#fee6df;color:#9b3928}
+  .tag.medium{border:1px solid transparent}.tag.medium.optical{background:#e8e2f7;color:#5e438c;border-color:#cfc1eb}.tag.medium.electrical{background:#fff0ca;color:#79520b;border-color:#ead393}.tag.medium.unspecified{background:#eceeeb;color:#606a66;border-color:#d5d9d5}
+  .classification{position:relative;display:inline-block}.classification summary{list-style:none;cursor:pointer}.classification summary::-webkit-details-marker{display:none}.classification-card{position:absolute;z-index:35;left:0;top:calc(100% + 6px);width:min(330px,80vw);padding:11px 12px;border:1px solid #cfd8d4;border-radius:9px;background:#fffdf8;box-shadow:0 14px 35px rgba(7,28,44,.18);font-size:10.5px;color:var(--muted);line-height:1.45}.classification-card b{color:var(--ink)}.classification-evidence{display:block;margin-top:6px;padding-top:6px;border-top:1px solid #e0e3df;color:#41545e}
+  .tag.screening{border:1px solid transparent}.tag.screening.core{background:#dff3e7;color:#17633b;border-color:#b9ddc8}.tag.screening.adjacent{background:#e0eef9;color:#245a82;border-color:#bfd7e9}.tag.screening.needs_review{background:#fff0ca;color:#79520b;border-color:#ead393}.tag.screening.out_of_scope{background:#eceeeb;color:#606a66;border-color:#d5d9d5}
+  .venue b{display:block;font-size:12.5px}.venue span{font-size:11px;color:var(--muted)}
+  .metrics{font-size:11.5px;color:var(--muted)}
+  .metric{display:block;margin:2px 0}.metric b{color:var(--ink)}
+  .metric-source{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-top:6px}
+  .completeness{display:flex;gap:3px;align-items:center;flex-wrap:wrap;margin-top:7px}.complete-chip{display:inline-flex;align-items:center;gap:2px;padding:2px 5px;border-radius:4px;background:#eceeeb;color:#68716d;font-size:9px;font-weight:800}.complete-chip.structured{background:#dff3e7;color:#17633b}.complete-chip.title-only{background:#fff0ca;color:#79520b}.complete-chip.available{background:#e0eef9;color:#245a82}.fom-ready-chip{display:inline-flex;padding:2px 6px;border-radius:99px;background:#dcefee;color:#087074;font-size:9px;font-weight:850}
+  .paper-actions{display:flex;justify-content:flex-end;gap:6px;flex-wrap:wrap}
+  .paper-actions a,.paper-actions button{height:31px;border:1px solid #cfd4d2;background:#fff;border-radius:6px;padding:0 9px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:var(--ink);font-size:11px;font-weight:750;cursor:pointer}
+  .paper-actions a:hover,.paper-actions button:hover{border-color:var(--cyan);color:#087c80}
+  .paper-actions .pdf{background:var(--ink);border-color:var(--ink);color:#fff}
+  .paper-actions .star{font-size:16px;padding:0 7px;color:#a3aaa9}.paper-actions .star.on{color:var(--amber)}
+  .evidence-box{grid-column:1/-1;background:#f1f5f3;border-left:3px solid var(--cyan);border-radius:5px;padding:12px 14px;margin-top:1px}
+  .evidence-box[hidden]{display:none}.evidence-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .evidence-item{background:#fff;border:1px solid #d8e1de;border-radius:7px;padding:9px 10px;font-size:11px;color:var(--muted)}
+  .evidence-item b{color:var(--ink)}.evidence-item a{color:#087c80}.evidence-empty{font-size:12px;color:var(--muted)}
+  .empty{background:var(--card);border:1px dashed #c8cbc7;border-radius:12px;text-align:center;padding:56px 20px;color:var(--muted)}
+  .pager{display:flex;justify-content:center;align-items:center;gap:6px;margin-top:22px;flex-wrap:wrap}
+  .pager button{min-width:34px;height:34px;border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer}
+  .pager button.active{background:var(--cyan);border-color:var(--cyan);color:#fff}.pager button:disabled{opacity:.4;cursor:default}
+  .pager span{font-size:12px;color:var(--muted);margin:0 8px;white-space:nowrap}
+  .loading{animation:pulse 1.1s ease-in-out infinite alternate}@keyframes pulse{to{opacity:.35}}
+
+  .pdf-panel{position:fixed;top:0;right:0;bottom:0;width:min(54vw,850px);background:#fff;z-index:80;box-shadow:-24px 0 60px rgba(0,0,0,.24);display:flex;flex-direction:column;transform:translateX(105%);transition:transform .2s ease}
+  .pdf-panel.open{transform:translateX(0)}
+  .pdf-head{height:56px;background:var(--ink);color:#fff;display:flex;align-items:center;gap:12px;padding:0 16px}
+  .pdf-head strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;font-size:13px}
+  .pdf-head a{font-size:12px;color:#fff}.pdf-head button{border:0;background:rgba(255,255,255,.12);color:#fff;width:32px;height:32px;border-radius:6px;cursor:pointer}
+  .pdf-panel iframe{border:0;flex:1;background:#525659}
+  .scrim{position:fixed;inset:0;background:rgba(7,28,44,.48);z-index:70;opacity:0;pointer-events:none;transition:opacity .2s}.scrim.open{opacity:1;pointer-events:auto}
+
+  footer{background:#e8e5dc;border-top:1px solid #d0cfc8;padding:25px clamp(20px,4vw,68px);color:var(--muted);font-size:12px}
+  .footer-inner{max-width:1480px;margin:auto;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+
+  @media(max-width:1180px){
+    .filters{grid-template-columns:repeat(4,1fr)}.filters input:first-child{grid-column:span 2}
+    .paper-row{grid-template-columns:64px minmax(230px,1fr) 120px 145px}.venue{display:none}.metrics{grid-column:2/4}.paper-actions{grid-column:4;grid-row:1/3}
+  }
+  @media(max-width:900px){
+    .hero-grid,.analytics,.performance-grid,.methodology{grid-template-columns:1fr}.scope{grid-template-columns:1fr}.hero{padding-top:45px}
+    .chart-card.wide{grid-column:auto}.coverage-grid{grid-template-columns:repeat(3,1fr)}
+    .fom-readiness{grid-template-columns:1fr 1fr}.fom-intro{grid-column:1/-1}
+    .stat-strip{grid-template-columns:1fr 1fr}.paper-row{grid-template-columns:58px minmax(0,1fr) 120px}.tags{grid-column:3}.metrics{grid-column:2/4}.paper-actions{grid-column:2/4;grid-row:auto;justify-content:flex-start}
+    .topnav .account-label{display:none}.pdf-panel{width:100%}
+  }
+  @media(max-width:650px){
+    .topbar{padding:0 14px}.brand span:last-child{display:none}.nav-link{padding:6px}.logout{padding:6px 8px}
+    h1{font-size:43px}.hero{padding-left:18px;padding-right:18px}.calc-grid{grid-template-columns:1fr 1fr}
+    .stat-strip{padding:0 14px;gap:7px}.stat{padding:14px}.stat b{font-size:21px}
+    main{padding-left:14px;padding-right:14px}.section-head{display:block}.section-head p{margin-top:10px}
+    .filters{position:static;grid-template-columns:1fr 1fr}.filters input:first-child{grid-column:1/-1}
+    .coverage-grid{grid-template-columns:1fr 1fr}.fom-readiness{grid-template-columns:1fr}.fom-intro{grid-column:auto}.chart-wrap{height:245px}
+    .paper-row{grid-template-columns:48px minmax(0,1fr);gap:10px}.tags,.metrics,.paper-actions{grid-column:2}.paper-actions{justify-content:flex-start}.evidence-list{grid-template-columns:1fr}
+    .trend{gap:4px}.trend-year{display:none}
+    .pager span{flex-basis:100%;text-align:center}
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="{{ url_for('serdes_survey') }}"><span class="brand-mark"></span><span>SerDes Survey</span></a>
+  <nav class="topnav" aria-label="주요 메뉴">
+    <a class="nav-link" href="#landscape">동향</a>
+    <a class="nav-link" href="#performance">성능</a>
+    <a class="nav-link" href="#papers">논문</a>
+    <a class="nav-link" href="{{ url_for('index') }}">전체 저장소</a>
+    <a class="nav-link" href="/ai">AI Research Desk</a>
+    <span class="account-label">{{ username }}{% if role == "viewer" %} · 읽기 전용{% endif %}</span>
+    <a class="nav-link" href="/account/password">비밀번호 변경</a>
+    <form class="logout-form" method="post" action="{{ url_for('logout') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button class="logout" type="submit">로그아웃</button>
+    </form>
+  </nav>
+</header>
+
+<section class="hero">
+  <div class="hero-grid">
+    <div>
+      <div class="eyebrow">IEEE · Optica serial-link research map</div>
+      <h1>SerDes<br>Performance Survey</h1>
+      <p class="lede">Explore high-speed serial-link circuits, architectures, and signaling at a glance through their connections to paper metadata.</p>
+      <div class="scope">
+        <div class="scope-item"><b>대상 출처</b><span>IEEE·Optica 저널·학회를 포함하며 Nature, DesignCon은 제외</span></div>
+        <div class="scope-item"><b>데이터 원칙</b><span>원문 실측 검토와 기존 기준값을 연결하고 회로·측정 범위를 구분</span></div>
+        <div class="scope-item"><b>근거 원칙</b><span>Title · Abstract · Reference · PDF 출처와 검토 상태를 수치별로 표시</span></div>
+      </div>
+      <div class="hero-actions">
+        <a class="action primary" href="#papers">서베이 탐색</a>
+        <a class="action secondary" href="#performance">성능 지형 보기</a>
+      </div>
+    </div>
+    <aside class="calculator" aria-labelledby="calc-title">
+      <div class="calc-head">
+        <div><h2 id="calc-title">Link Power Calculator</h2><p>Energy efficiency로 링크 전력을 빠르게 환산합니다.</p></div>
+        <span class="calc-badge">LIVE</span>
+      </div>
+      <div class="calc-grid">
+        <div class="field"><label for="calc-rate">Lane rate (Gb/s)</label><input id="calc-rate" type="number" min="0" step="1" value="112"></div>
+        <div class="field"><label for="calc-energy">Energy (pJ/bit)</label><input id="calc-energy" type="number" min="0" step="0.01" value="1.5"></div>
+        <div class="field"><label for="calc-lanes">Lanes</label><input id="calc-lanes" type="number" min="1" step="1" value="4"></div>
+        <div class="field"><label for="calc-mod">Signaling</label><select id="calc-mod"><option value="2">PAM-4</option><option value="1">NRZ</option><option value="3">PAM-8</option></select></div>
+      </div>
+      <div class="calc-output"><span>Estimated link power</span><strong id="calc-power">672 mW</strong><small id="calc-detail">448 Gb/s aggregate · 56 GBd/lane</small></div>
+    </aside>
+  </div>
+</section>
+
+<section class="stat-strip" aria-label="서베이 요약">
+  <div class="stat"><b id="stat-total" class="loading">—</b><span>Core + Adjacent 논문</span></div>
+  <div class="stat"><b id="stat-period" class="loading">—</b><span>논문·성능 데이터 기간</span></div>
+  <div class="stat"><b id="stat-pdf" class="loading">—</b><span>수치·후보 근거 보유 논문</span></div>
+  <div class="stat"><b id="stat-sources" class="loading">—</b><span>Energy/bit 보유 논문</span></div>
+</section>
+
+<main>
+  <section id="landscape">
+    <div class="section-head">
+      <h2>Research landscape</h2>
+      <p>연도별 발표량과 주요 출처를 현재 SQL 저장소에서 집계합니다. 필터는 아래 논문 목록에 즉시 적용됩니다.</p>
+    </div>
+    <div class="analytics">
+      <article class="panel">
+        <div class="panel-title"><h3>Publications by year</h3><span id="trend-caption">최근 연도</span></div>
+        <div id="trend" class="trend" aria-label="연도별 논문 수"></div>
+      </article>
+      <article class="panel">
+        <div class="panel-title"><h3>Leading venues</h3><span>상위 8개</span></div>
+        <div id="source-bars" class="source-bars"></div>
+      </article>
+    </div>
+  </section>
+
+  <section id="performance" class="performance-section">
+    <div class="section-head">
+      <div>
+        <h2>Performance landscape</h2>
+      </div>
+      <div class="perf-toolbar">
+        <label for="rate-mode">속도 기준</label>
+        <select id="rate-mode"><option value="lane">Lane rate</option><option value="reported">Reported rate</option><option value="aggregate">Aggregate rate</option></select>
+        <label for="performance-source-mode">근거 등급</label>
+        <select id="performance-source-mode"><option value="structured">All structured</option><option value="verified">Verified / PDF / reference</option><option value="user_sheet">User Survey</option><option value="abstract">Abstract</option><option value="title">Title clues only</option><option value="all">All evidence</option></select>
+        <label for="performance-medium-mode">Link medium</label>
+        <select id="performance-medium-mode"><option value="all">All media</option><option value="electrical">Electrical</option><option value="optical">Optical</option><option value="unspecified">Unspecified / mixed</option></select>
+        <label for="performance-subtype-mode">Subtype</label>
+        <select id="performance-subtype-mode"><option value="all">All subtypes</option><option value="die_to_die">Die-to-die</option><option value="memory_io">Memory I/O</option><option value="backplane">Backplane</option><option value="cable">Cable</option><option value="chip_to_chip">Chip-to-chip</option><option value="electrical_other">Electrical other</option><option value="vcsel">VCSEL</option><option value="silicon_photonic">Silicon photonics</option><option value="eml_dml">EML / DML</option><option value="pon">PON</option><option value="optical_other">Optical other</option><option value="mixed_or_unknown">Mixed / unknown</option></select>
+        <label for="performance-scope-mode">Energy scope</label>
+        <select id="performance-scope-mode"><option value="all">All scopes</option><option value="tx">TX</option><option value="rx">RX</option><option value="trx">TRX</option><option value="full_link">Full link</option><option value="driver_only">Driver only</option><option value="unknown">Unknown</option></select>
+        <label for="performance-pareto-mode">Pareto</label>
+        <select id="performance-pareto-mode"><option value="all">All + frontier</option><option value="frontier">Frontier only</option></select>
+        <label for="performance-table-mode">목록 범위</label>
+        <select id="performance-table-mode"><option value="coverage">대표 표본 · 최신 12 + 초기 8</option><option value="unmatched">WLink 원본 · 논문 미연결</option><option value="all">전체 성능점</option></select>
+      </div>
+    </div>
+    <p class="method-note"><span>ⓘ</span><span>모집단은 전수판정이 끝난 <b>최신 전수판정의 Core + Adjacent</b>를 사용합니다. 위 커버리지는 논문별 모든 measurement에서 해당 필드가 한 번이라도 확인된 수이고, <b>차트의 n은 필요한 x·y가 같은 operating point에 있어 실제로 표시된 수</b>입니다. 보고된 Energy/bit는 보존하고, 빈 값만 같은 operating point와 같은 근거 위치의 <b>Power[mW] ÷ Speed[Gb/s]</b>로 재생성해 “P/R calculated”로 표시합니다. 서로 다른 measurement, Title–Abstract 교차값, scope이 불명확한 multi-lane 값은 결합하지 않습니다. ‘논문 미연결’ WLink 값은 모집단 차트와 분리합니다. 색상은 공정 노드, 마커 모양은 CMOS·BiCMOS·기타를 뜻하며, <b>Optical/Electrical은 별도 필터</b>로 구분합니다. <b>+/− 또는 마우스 휠로 확대</b>하고 드래그해 이동할 수 있습니다.</span></p>
+    {% if survey_ai_visible %}{% include 'serdes_ai.html' %}{% endif %}
+    <div class="coverage-grid" aria-label="성능 데이터 커버리지">
+      <div class="coverage-item"><b id="cov-total">—</b><span>모집단</span></div>
+      <div class="coverage-item"><b id="cov-measured">—</b><span>수치·후보 근거 보유</span></div>
+      <div class="coverage-item"><b id="cov-rate">—</b><span>Rate / range · any scope</span></div>
+      <div class="coverage-item"><b id="cov-energy">—</b><span id="cov-energy-label">Energy/bit</span></div>
+      <div class="coverage-item"><b id="cov-process">—</b><span>Process node</span></div>
+      <div class="coverage-item"><b id="cov-loss">—</b><span>Channel loss</span></div>
+    </div>
+    <div class="fom-readiness" aria-label="FoM 비교 가능 표본">
+      <div class="fom-intro"><b>FoM comparison readiness</b><span id="technology-summary">각 숫자는 같은 measurement 안에 두 필드가 함께 있는 논문 수입니다. Energy/bit가 기본 FoM이며 정규화 FoM은 별도 보존합니다.</span></div>
+      <div class="fom-item"><strong id="fom-rate-energy">—</strong><b>Rate + Energy</b><span>동일 운용점</span></div>
+      <div class="fom-item"><strong id="fom-process-energy">—</strong><b>Process + Energy</b><span>공정별 비교</span></div>
+      <div class="fom-item"><strong id="fom-loss-energy">—</strong><b>Loss + Energy</b><span>채널 조건 포함</span></div>
+      <div class="fom-item"><strong id="fom-direct-normalized">—</strong><b>Normalized pJ/b/dB</b><span>직접 보고·등가변환 별도</span></div>
+    </div>
+    <div class="performance-grid">
+      <article class="chart-card">
+        <div class="chart-head"><div><h3 id="rate-chart-title">Lane rate vs. year</h3><p>색상은 공정군, 모양은 CMOS/BiCMOS</p></div><div class="chart-side"><span id="rate-sample" class="chart-sample">—</span><div class="chart-zoom" aria-label="Lane rate 차트 확대·축소"><button type="button" data-zoom-chart="rate-chart" data-zoom-action="out" aria-label="Lane rate 차트 축소">−</button><span id="rate-chart-zoom" class="zoom-level">100%</span><button type="button" data-zoom-chart="rate-chart" data-zoom-action="in" aria-label="Lane rate 차트 확대">+</button><button type="button" class="zoom-reset" data-zoom-chart="rate-chart" data-zoom-action="reset">Reset</button></div></div></div>
+        <div class="chart-wrap"><canvas id="rate-chart" class="zoomable" tabindex="0" role="img" aria-label="연도별 SerDes 데이터 속도 산점도">Canvas chart</canvas></div>
+        <div id="rate-legend" class="chart-legend"></div>
+      </article>
+      <article class="chart-card">
+        <div class="chart-head"><div><h3>Energy/bit vs. year</h3><p>로그 축 · 낮을수록 에너지 효율 우수</p></div><div class="chart-side"><span id="energy-sample" class="chart-sample">—</span><div class="chart-zoom" aria-label="Energy 차트 확대·축소"><button type="button" data-zoom-chart="energy-chart" data-zoom-action="out" aria-label="Energy 차트 축소">−</button><span id="energy-chart-zoom" class="zoom-level">100%</span><button type="button" data-zoom-chart="energy-chart" data-zoom-action="in" aria-label="Energy 차트 확대">+</button><button type="button" class="zoom-reset" data-zoom-chart="energy-chart" data-zoom-action="reset">Reset</button></div></div></div>
+        <div class="chart-wrap"><canvas id="energy-chart" class="zoomable" tabindex="0" role="img" aria-label="연도별 에너지 효율 로그 산점도">Canvas chart</canvas></div>
+        <div id="energy-legend" class="chart-legend"></div>
+      </article>
+      <article class="chart-card wide">
+        <div class="chart-head"><div><h3 id="pareto-chart-title">Lane rate vs. Energy/bit — scope-aware Pareto</h3><p>동일 operating point · 같은 medium·energy scope·rate 분모 안에서 rate↑ / energy↓ 비지배점</p></div><div class="chart-side"><span id="pareto-sample" class="chart-sample">—</span><div class="chart-zoom" aria-label="Pareto 차트 확대·축소"><button type="button" data-zoom-chart="pareto-chart" data-zoom-action="out" aria-label="Pareto 차트 축소">−</button><span id="pareto-chart-zoom" class="zoom-level">100%</span><button type="button" data-zoom-chart="pareto-chart" data-zoom-action="in" aria-label="Pareto 차트 확대">+</button><button type="button" class="zoom-reset" data-zoom-chart="pareto-chart" data-zoom-action="reset">Reset</button></div></div></div>
+        <div class="chart-wrap"><canvas id="pareto-chart" class="zoomable" tabindex="0" role="img" aria-label="속도와 에너지 효율의 scope-aware Pareto 산점도">Canvas chart</canvas></div>
+        <div id="pareto-legend" class="chart-legend"></div>
+      </article>
+      <article class="chart-card">
+        <div class="chart-head"><div><h3>Energy/bit vs. channel loss</h3><p>같은 energy/bit도 채널 조건과 함께 비교</p></div><div class="chart-side"><span id="loss-sample" class="chart-sample">—</span><div class="chart-zoom" aria-label="Channel loss 차트 확대·축소"><button type="button" data-zoom-chart="loss-chart" data-zoom-action="out" aria-label="Channel loss 차트 축소">−</button><span id="loss-chart-zoom" class="zoom-level">100%</span><button type="button" data-zoom-chart="loss-chart" data-zoom-action="in" aria-label="Channel loss 차트 확대">+</button><button type="button" class="zoom-reset" data-zoom-chart="loss-chart" data-zoom-action="reset">Reset</button></div></div></div>
+        <div class="chart-wrap"><canvas id="loss-chart" class="zoomable" tabindex="0" role="img" aria-label="채널 손실별 에너지 효율 산점도">Canvas chart</canvas></div>
+        <div id="loss-legend" class="chart-legend"></div>
+      </article>
+      <article class="chart-card">
+        <div class="chart-head"><div><h3>Energy/bit by process</h3><p>공정군 안에서 CMOS/BiCMOS를 나란히 비교</p></div><div class="chart-side"><span id="process-sample" class="chart-sample">—</span><div class="chart-zoom" aria-label="Process 차트 확대·축소"><button type="button" data-zoom-chart="process-chart" data-zoom-action="out" aria-label="Process 차트 축소">−</button><span id="process-chart-zoom" class="zoom-level">100%</span><button type="button" data-zoom-chart="process-chart" data-zoom-action="in" aria-label="Process 차트 확대">+</button><button type="button" class="zoom-reset" data-zoom-chart="process-chart" data-zoom-action="reset">Reset</button></div></div></div>
+        <div class="chart-wrap"><canvas id="process-chart" class="zoomable" tabindex="0" role="img" aria-label="공정별 에너지 효율 박스 플롯">Canvas chart</canvas></div>
+        <div id="process-legend" class="chart-legend"></div>
+      </article>
+    </div>
+    <div class="performance-table-intro">
+      <div><h3>대표 성능점 목록</h3><p id="performance-table-note">모집단 전체나 품질 순위가 아니라, 차트에 연결된 대표 성능점 중 최신 12개와 초기 8개를 보여주는 미리보기입니다.</p></div>
+      <span id="performance-table-count" class="performance-table-count">—</span>
+    </div>
+    <div class="performance-table-wrap">
+      <table class="performance-table">
+        <thead><tr><th>Year</th><th>Paper / implementation</th><th>Medium</th><th>Rate</th><th>Energy</th><th>Process</th><th>FoM / conditions</th><th>Evidence</th></tr></thead>
+        <tbody id="performance-table"><tr><td colspan="8">성능 데이터를 불러오는 중…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="methodology" aria-label="서베이 방법과 레퍼런스">
+    <article class="method-card">
+      <h3>수치 해석 원칙</h3>
+      <ul>
+        <li>Energy/bit는 회로 범위(TX, RX, TRX, full link, driver only)와 lane/aggregate 분모가 같을 때만 직접 비교합니다.</li>
+        <li>비어 있는 Energy/bit는 같은 measurement·근거 위치의 <code>Power[mW] / Speed[Gb/s]</code>만 계산하며, 보고값은 덮어쓰지 않습니다.</li>
+        <li><code>4×112 Gb/s</code>는 112 Gb/s/lane, 4 lanes, 448 Gb/s aggregate로 분리합니다.</li>
+        <li><code>pJ/b/dB</code>, 선형 <code>Gb/s/mm</code>, 면적 <code>Gb/s/mm²</code>는 일반 energy/bit·data rate와 서로 섞지 않습니다.</li>
+        <li>초록은 IEEE metadata를 우선하고 DOI가 일치하는 OpenAlex 공개 초록을 보완 사용합니다. PDF 검증 전에는 “Abstract · Auto”로 표시합니다.</li>
+        <li>Active area는 core/full-chip/TX/RX 범위가 검증되기 전까지 면적 FoM을 자동 계산하지 않습니다.</li>
+      </ul>
+    </article>
+    <article class="method-card">
+      <h3>Method references</h3>
+      <p>데이터를 그대로 합치지 않고, 서베이 구성과 시각화 방법을 비교하는 기준입니다.</p>
+      <div class="reference-links">
+        <a href="https://web.engr.oregonstate.edu/~anandt/linksurvey/" target="_blank" rel="noopener">Oregon State Wireline Link Survey <span>기준값 ↗</span></a>
+        <a href="https://murmann-group.github.io/adc_survey/" target="_blank" rel="noopener">Murmann ADC Survey <span>구성 참고 ↗</span></a>
+        <a href="https://www.wchoi.net/thz" target="_blank" rel="noopener">W. Choi THz Survey <span>방법 참고 ↗</span></a>
+      </div>
+    </article>
+  </section>
+
+  <section id="papers" class="papers-section">
+    <div class="section-head">
+      <h2>Survey explorer</h2>
+      <p>시그널링과 회로 블록을 교차해 관련 논문을 좁히고, 원문과 보유 PDF로 바로 이동할 수 있습니다.</p>
+    </div>
+    <div class="method-note"><span>ⓘ</span><span><b>기본 목록은 최신 전수판정의 Core + Adjacent</b>입니다. “SerDes 후보군”을 선택하면 아직 전수판정에 포함되지 않은 제목 정규식 후보까지 넓혀 볼 수 있습니다. Link medium은 제목의 명시적 매체, 구현 문맥이 있는 초록, Core SerDes 추론 순으로 판정하며 광·전기 혼합 또는 TIA·burst-mode 같은 경계 사례는 <b>Unspecified / mixed</b>로 보존합니다. 구조화된 값은 근거 배지로, 제목 수치는 탐색 단서로 구분합니다.</span></div>
+    <div id="venue-audit-note" class="method-note" hidden><span>✓</span><div id="venue-audit-summary" class="audit-summary"></div></div>
+    <div class="filters" aria-label="SerDes 논문 필터">
+      <input id="f-q" type="search" placeholder="제목 · 저자 검색" autocomplete="off">
+      <select id="f-from" aria-label="시작 연도"><option value="">시작 연도</option></select>
+      <select id="f-to" aria-label="종료 연도"><option value="">종료 연도</option></select>
+      <select id="f-source" aria-label="저널 및 학회"><option value="">저널·학회 전체</option></select>
+      <select id="f-signal" aria-label="시그널링"><option value="">시그널링 전체</option><option value="pam4">PAM-4</option><option value="nrz">NRZ</option><option value="pam3">PAM-3 / Duo</option><option value="pam8">PAM-8</option></select>
+      <select id="f-block" aria-label="회로 블록"><option value="">블록 전체</option><option value="tx">TX</option><option value="rx">RX</option><option value="cdr">CDR</option><option value="equalizer">Equalizer</option><option value="system">System</option></select>
+      <select id="f-medium" aria-label="링크 매체"><option value="">매체 전체</option><option value="electrical">Electrical</option><option value="optical">Optical</option><option value="unspecified">Unspecified / mixed</option></select>
+      <select id="f-subtype" aria-label="링크 서브타입"><option value="">서브타입 전체</option><option value="die_to_die">Die-to-die</option><option value="memory_io">Memory I/O</option><option value="backplane">Backplane</option><option value="cable">Cable</option><option value="chip_to_chip">Chip-to-chip</option><option value="electrical_other">Electrical other</option><option value="vcsel">VCSEL</option><option value="silicon_photonic">Silicon photonics</option><option value="eml_dml">EML / DML</option><option value="pon">PON</option><option value="optical_other">Optical other</option><option value="mixed_or_unknown">Mixed / unknown</option></select>
+      <select id="f-evidence" aria-label="근거 등급"><option value="">근거 전체</option><option value="verified">Verified / PDF / reference</option><option value="user_sheet">User Survey</option><option value="abstract">Abstract</option><option value="title">Title clue</option><option value="screening_inference">Screening inference</option></select>
+      <select id="f-screening" aria-label="전수 검토 판정"><option value="">SerDes 후보군</option><option value="screened">전수판정 전체</option><option value="included" selected>Core + Adjacent</option><option value="core">Core SerDes</option><option value="adjacent">Adjacent I/O</option><option value="needs_review">추가 검토</option><option value="out_of_scope">Noise / 제외</option></select>
+      <select id="f-sort" aria-label="정렬"><option value="newest">최신순</option><option value="relevance">SerDes 관련도순</option><option value="citations">인용순</option><option value="title">제목순</option></select>
+      <label class="check"><input id="f-pdf" type="checkbox"> PDF만</label>
+      <button class="reset" id="btn-reset" type="button">초기화</button>
+    </div>
+    <div class="result-head"><span id="result-info">논문을 불러오는 중…</span><span id="sync-info"></span></div>
+    <div id="paper-list" class="paper-list" aria-live="polite"></div>
+    <div id="pager" class="pager"></div>
+  </section>
+</main>
+
+<aside id="point-popover" class="point-popover" role="dialog" aria-labelledby="point-popover-title" hidden>
+  <button id="point-popover-close" class="point-popover-close" type="button" aria-label="상세 정보 닫기">×</button>
+  <p class="point-popover-kicker">Performance point</p>
+  <h3 id="point-popover-title"></h3>
+  <div class="point-popover-meta"><span id="point-popover-year"></span><span id="point-popover-author"></span><span id="point-popover-tech"></span><span id="point-popover-medium"></span></div>
+  <div id="point-popover-diagram" class="point-diagram" aria-live="polite"></div>
+  <div id="point-popover-metrics" class="point-popover-metrics"></div>
+  <a id="point-popover-link" class="point-popover-link" href="#" target="_blank" rel="noopener"><span id="point-popover-link-label">IEEE Xplore로 이동</span><span>↗</span></a>
+</aside>
+
+<div id="scrim" class="scrim"></div>
+<aside id="pdf-panel" class="pdf-panel" aria-label="PDF 미리보기" aria-hidden="true">
+  <div class="pdf-head"><strong id="pdf-title">PDF</strong><a id="pdf-newtab" href="#" target="_blank" rel="noopener">새 탭 ↗</a><button id="pdf-close" type="button" aria-label="PDF 닫기">×</button></div>
+  <iframe id="pdf-frame" src="about:blank" title="논문 PDF"></iframe>
+</aside>
+
+<footer><div class="footer-inner"><span>SerDes Performance Survey · Paper Repository</span><span>SQL 데이터 자동 집계 · 원문 우선 검증</span></div></footer>
+
+<script src="{{ url_for('static', filename='serdes_labels.js') }}"></script>
+<script src="{{ url_for('static', filename='serdes_diagrams.js') }}"></script>
+<script>
+const API="";
+const CSRF_TOKEN={{ csrf_token|tojson }};
+const CAN_EDIT_FAVORITES={{ can_edit_favorites|tojson }};
+const CAN_EDIT_SHARED={{ (role == 'admin')|tojson }};
+const SURVEY_AI_VISIBLE={{ survey_ai_visible|tojson }};
+const state={q:"",year_from:"",year_to:"",source:"",signal:"",block:"",medium:"",subtype:"",evidence_tier:"",screening:"included",sort:"newest",pdf_only:false,page:1,size:30};
+const performanceState={points:[],pointMap:new Map(),chartSets:{},unmatched:[],rateMode:"lane",sourceMode:"structured",mediumMode:"all",subtypeMode:"all",scopeMode:"all",paretoMode:"all",tableMode:"coverage",hits:new Map(),views:new Map(),layouts:new Map(),drag:null,suppressClick:new Set(),requestGeneration:0,controller:null};
+const $=id=>document.getElementById(id);
+const esc=value=>String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+const safeUrl=value=>{const raw=String(value??"").trim();if(!raw)return "";try{const u=new URL(raw,location.origin);return ["http:","https:"].includes(u.protocol)?u.href:""}catch{return ""}};
+
+function calculatePower(){
+  const rate=Math.max(0,Number($("calc-rate").value)||0);
+  const energy=Math.max(0,Number($("calc-energy").value)||0);
+  const lanes=Math.max(1,Number($("calc-lanes").value)||1);
+  const bits=Number($("calc-mod").value)||1;
+  const power=rate*energy*lanes;
+  $("calc-power").textContent=power>=1000?`${(power/1000).toFixed(2)} W`:`${power.toFixed(power<10?2:0)} mW`;
+  $("calc-detail").textContent=`${(rate*lanes).toLocaleString()} Gb/s aggregate · ${(rate/bits).toLocaleString()} GBd/lane`;
+}
+["calc-rate","calc-energy","calc-lanes","calc-mod"].forEach(id=>$(id).addEventListener("input",calculatePower));
+
+async function fetchJson(url,options){
+  const response=await fetch(url,options);
+  if(response.status===401){location.href="/login?next=/serdes";throw new Error("auth")}
+  if(!response.ok) throw new Error(`HTTP ${response.status}`);
+  return response.json();
+}
+
+function renderTrend(years){
+  const series=(years||[]).filter(x=>Number(x.year)>=1900);
+  const max=Math.max(1,...series.map(x=>Number(x.count)));
+  $("trend").innerHTML=series.map(x=>`<div class="trend-col"><div class="trend-bar" tabindex="0" aria-label="${esc(x.year)}년 ${Number(x.count).toLocaleString()}편" style="--h:${Math.max(2,Number(x.count)/max*100)}%"><i>${esc(x.year)} · ${Number(x.count).toLocaleString()}편</i><span class="trend-year">${esc(x.year)}</span></div></div>`).join("");
+  if(series.length) $("trend-caption").textContent=`${series[0].year}–${series[series.length-1].year} · 전체 연도`;
+}
+
+function renderSources(sources){
+  const top=(sources||[]).slice(0,8);const max=Math.max(1,...top.map(x=>Number(x.count)));
+  $("source-bars").innerHTML=top.map(x=>`<div class="source-line"><span class="source-name" title="${esc(x.name)}">${esc(x.name)}</span><div class="source-track"><div class="source-fill" style="--w:${Number(x.count)/max*100}%"></div></div><span class="source-count">${Number(x.count).toLocaleString()}</span></div>`).join("");
+}
+
+function fillSelect(select,items,valueKey,labelFn){
+  const selected=select.value;
+  select.querySelectorAll("option[data-generated='1']").forEach(option=>option.remove());
+  items.forEach(item=>{const option=document.createElement("option");option.dataset.generated="1";option.value=item[valueKey];option.textContent=labelFn(item);select.appendChild(option)});
+  if([...select.options].some(option=>option.value===selected))select.value=selected;
+}
+function setCoverage(id,value,total){
+  const n=Number(value||0),population=Math.max(0,Number(total||0)),pct=population?`${(n/population*100).toFixed(1)}%`:"";
+  $(id).innerHTML=`${n.toLocaleString()}${pct?`<em>${pct}</em>`:""}`;
+}
+
+async function loadMeta(){
+  const meta=await fetchJson(API+"/api/serdes/meta");
+  $("stat-total").textContent=meta.total.toLocaleString();
+  $("stat-period").textContent=meta.year_min&&meta.year_max?`${meta.year_min}–${meta.year_max}`:"—";
+  $("stat-pdf").textContent=Number(meta.performance_total||0).toLocaleString();
+  $("stat-sources").textContent=Number(meta.energy_total||0).toLocaleString();
+  const population=Number(meta.population_total||meta.total||0);
+  setCoverage("cov-total",population,population);
+  setCoverage("cov-measured",meta.measurement_total,population);
+  setCoverage("cov-rate",meta.rate_total,population);
+  setCoverage("cov-energy",meta.energy_total,population);
+  const reportedEnergy=Number(meta.reported_energy_total||0),calculatedOnlyEnergy=Number(meta.calculated_only_energy_total||0);
+  $("cov-energy-label").textContent=`Energy/bit · reported ${reportedEnergy.toLocaleString()} · P/R-only ${calculatedOnlyEnergy.toLocaleString()}`;
+  setCoverage("cov-process",meta.process_total,population);
+  setCoverage("cov-loss",meta.loss_total,population);
+  $("fom-rate-energy").textContent=Number(meta.rate_energy_total||0).toLocaleString();
+  $("fom-process-energy").textContent=Number(meta.energy_process_total||0).toLocaleString();
+  $("fom-loss-energy").textContent=Number(meta.energy_loss_total||0).toLocaleString();
+  $("fom-direct-normalized").textContent=Number(meta.normalized_energy_loss_total||0).toLocaleString();
+  const technology=(meta.technology_families||[]).map(item=>`${item.family} ${Number(item.count||0).toLocaleString()}`).join(" · ");
+  const media=(meta.link_media||[]).map(item=>`${mediumLabel(item.medium)} ${Number(item.count||0).toLocaleString()}`).join(" · ");
+  if(technology)$("technology-summary").textContent=`같은 measurement의 필드만 조합합니다. Title+abstract 명시 technology: ${technology}. Link medium: ${media}. 노드 크기로 CMOS/BiCMOS를 추정하지 않습니다.`;
+  document.querySelectorAll(".stat b").forEach(el=>el.classList.remove("loading"));
+  const years=[...new Set([...(meta.years||[]),...(meta.audit_years||[])].map(x=>x.year).filter(Boolean))].sort((a,b)=>b-a);
+  const sourceMap=new Map((meta.sources||[]).map(item=>[item.name,item]));
+  (meta.audit_sources||[]).forEach(item=>{if(!sourceMap.has(item.name))sourceMap.set(item.name,item)});
+  const filterSources=[...sourceMap.values()].sort((a,b)=>Number(b.count)-Number(a.count)||String(a.name).localeCompare(String(b.name)));
+  fillSelect($("f-from"),years.map(year=>({year})),"year",x=>x.year);
+  fillSelect($("f-to"),years.map(year=>({year})),"year",x=>x.year);
+  fillSelect($("f-source"),filterSources,"name",x=>`${x.name} (${Number(x.count).toLocaleString()})`);
+  (meta.link_media||[]).forEach(item=>{const option=$("f-medium").querySelector(`option[value="${item.medium}"]`);if(option){option.dataset.baseLabel=option.dataset.baseLabel||option.textContent;option.textContent=`${option.dataset.baseLabel} (${Number(item.count||0).toLocaleString()})`}});
+  (meta.link_subtypes||[]).forEach(item=>{[$("f-subtype"),$("performance-subtype-mode")].forEach(select=>{const option=select.querySelector(`option[value="${item.subtype}"]`);if(option){option.dataset.baseLabel=option.dataset.baseLabel||option.textContent;option.textContent=`${option.dataset.baseLabel} (${Number(item.count||0).toLocaleString()})`}})});
+  (meta.energy_scopes||[]).forEach(item=>{const option=$("performance-scope-mode").querySelector(`option[value="${item.scope}"]`);if(option){option.dataset.baseLabel=option.dataset.baseLabel||option.textContent;option.textContent=`${option.dataset.baseLabel} (${Number(item.count||0).toLocaleString()})`}});
+  renderTrend(meta.years);
+  renderSources(meta.sources);
+  const audits=meta.screenings||[];
+  if(audits.length){
+    const sum=key=>audits.reduce((total,item)=>total+Number(item[key]||0),0);
+    const counts={screened:sum("target_count"),included:sum("core_count")+sum("adjacent_count"),core:sum("core_count"),adjacent:sum("adjacent_count"),needs_review:sum("review_count"),out_of_scope:sum("excluded_count")};
+    Object.entries(counts).forEach(([value,count])=>{const option=$("f-screening").querySelector(`option[value="${value}"]`);if(option){option.dataset.baseLabel=option.dataset.baseLabel||option.textContent;option.textContent=`${option.dataset.baseLabel} (${Number(count||0).toLocaleString()})`}});
+    const versions=[...new Set(audits.map(item=>item.scope_version).filter(Boolean))].join(", "),venueRows=audits.map(item=>`<div class="audit-venue"><b>${esc(item.venue)}</b><small>${Number(item.target_count||0).toLocaleString()} · C ${Number(item.core_count||0).toLocaleString()} · A ${Number(item.adjacent_count||0).toLocaleString()} · R ${Number(item.review_count||0).toLocaleString()} · N ${Number(item.excluded_count||0).toLocaleString()}</small></div>`).join("");
+    const providerLabels={ieee_metadata:"IEEE metadata",openalex:"OpenAlex",local_pdf:"복구 PDF 초록"},providers=(meta.abstract_providers||[]).map(item=>`${providerLabels[item.provider]||item.provider} ${Number(item.count||0).toLocaleString()}`).join(" + ");
+    $("venue-audit-summary").innerHTML=`<b>출처 전수판정:</b> ${counts.screened.toLocaleString()}편 · Core ${counts.core.toLocaleString()} · Adjacent ${counts.adjacent.toLocaleString()} · 추가 검토 ${counts.needs_review.toLocaleString()} · Noise ${counts.out_of_scope.toLocaleString()} · 포함 논문 초록 ${Number(meta.abstract_total||0).toLocaleString()}${providers?` (${esc(providers)})`:""} · ${esc(versions)}<br>Core·Adjacent는 서베이에 포함하고, 추가 검토는 수동 확인 대기열, Noise는 기본 후보군에서 제외합니다. 관련도 점수는 검토 순서를 위한 값이며 논문의 품질 점수가 아닙니다.<details><summary>출처별 판정 보기</summary><div class="audit-venues">${venueRows}</div></details>`;$("venue-audit-note").hidden=false
+  }
+  if(meta.updated_at){const d=new Date(meta.updated_at),audit=audits.length?` · 전수판정 ${audits.reduce((total,item)=>total+Number(item.target_count||0),0).toLocaleString()}편`:"";$("sync-info").textContent=`성능 DB 갱신 ${d.toLocaleDateString("ko-KR")} · 초록 ${Number(meta.abstract_total||0).toLocaleString()}건${audit}`}
+}
+
+const PROCESS_COLORS=["#153f66","#087f86","#0ca6a6","#4caf78","#91ba3c","#e7a528","#ef8546","#f05f45","#d86837","#b54c65","#7655a6","#6d7780","#9b7755","#9aa2a5"];
+function processGroup(performance){
+  const n=finiteNumber(performance?.process_nm);
+  if(n==null)return "Unknown";
+  const groups=[[7,"≤7 nm"],[16,"16/14 nm"],[22,"22/20 nm"],[28,"28 nm"],[32,"32 nm"],[45,"45/40 nm"],[60,"60/55 nm"],[65,"65 nm"],[90,"90/80 nm"],[130,"130/110 nm"],[180,"180/150 nm"],[250,"250 nm"]];
+  for(const [max,label] of groups)if(n<=max)return label;
+  return ">250 nm";
+}
+function processColor(performance){
+  const label=processGroup(performance);const labels=["≤7 nm","16/14 nm","22/20 nm","28 nm","32 nm","45/40 nm","60/55 nm","65 nm","90/80 nm","130/110 nm","180/150 nm","250 nm",">250 nm","Unknown"];
+  return PROCESS_COLORS[Math.max(0,labels.indexOf(label))]||"#9aa2a5";
+}
+const TECHNOLOGY_ORDER=["CMOS","BiCMOS","Other / unspecified"];
+function technologyFamily(point){
+  if(TECHNOLOGY_ORDER.includes(point?.technology_family))return point.technology_family;
+  const text=[point?.performance?.process_text,point?.title].filter(Boolean).join(" ");
+  if(/\b(?:bi[\s-]?cmos|si[\s-]*ge)\b/i.test(text))return "BiCMOS";
+  if(/\b(?:cmos|finfet|fd[\s-]?soi|soi)\b/i.test(text))return "CMOS";
+  return "Other / unspecified";
+}
+const LINK_MEDIA=new Set(["optical","electrical","unspecified"]);
+function linkMedium(point){const value=String(point?.link_medium||"").toLowerCase();return LINK_MEDIA.has(value)?value:"unspecified"}
+function mediumLabel(value){return value==="optical"?"Optical":value==="electrical"?"Electrical":"Unspecified / mixed"}
+const SUBTYPE_LABELS={vcsel:"VCSEL",silicon_photonic:"Silicon photonics",eml_dml:"EML / DML",pon:"PON",optical_other:"Optical other",die_to_die:"Die-to-die",memory_io:"Memory I/O",backplane:"Backplane",cable:"Cable",chip_to_chip:"Chip-to-chip",electrical_other:"Electrical other",mixed_or_unknown:"Mixed / unknown"};
+const SCOPE_LABELS={tx:"TX",rx:"RX",trx:"TRX",full_link:"Full link",driver_only:"Driver only",unknown:"Unknown"};
+function linkSubtype(point){return String(point?.link_subtype||"mixed_or_unknown").toLowerCase()}
+function subtypeLabel(value){return SUBTYPE_LABELS[value]||String(value||"Mixed / unknown").replaceAll("_"," ")}
+function scopeLabel(value){return SCOPE_LABELS[value]||"Unknown"}
+function reasonLabel(value){if(Array.isArray(value))return value.join(", ");try{const parsed=JSON.parse(value);return Array.isArray(parsed)?parsed.join(", "):String(value||"")}catch{return String(value||"")}}
+function mediumBadge(point){const value=linkMedium(point),subtype=linkSubtype(point),source=String(point?.medium_source||"stored"),confidence=finiteNumber(point?.medium_confidence),subtypeSource=String(point?.subtype_source||"unclassified"),subtypeConfidence=finiteNumber(point?.subtype_confidence),mediumDetail=confidence==null?source:`${source} · ${Math.round(confidence*100)}%`,subtypeDetail=subtypeConfidence==null?subtypeSource:`${subtypeSource} · ${Math.round(subtypeConfidence*100)}%`,evidence=point?.subtype_evidence||point?.medium_evidence||"No stored classification sentence",reasons=[reasonLabel(point?.medium_reason_codes),reasonLabel(point?.subtype_reason_codes)].filter(Boolean).join(" · ");return `<details class="classification"><summary class="tag medium ${esc(value)}" title="분류 근거 보기">${esc(mediumLabel(value))} · ${esc(subtypeLabel(subtype))}</summary><div class="classification-card"><b>Medium</b> ${esc(mediumDetail)}<br><b>Subtype</b> ${esc(subtypeDetail)}${reasons?`<br><b>Rules</b> ${esc(reasons)}`:""}<span class="classification-evidence">${esc(evidence)}</span></div></details>`}
+function matchesPerformanceMedium(point){return performanceState.mediumMode==="all"||linkMedium(point)===performanceState.mediumMode}
+function matchesPerformanceSubtype(point){return performanceState.subtypeMode==="all"||linkSubtype(point)===performanceState.subtypeMode}
+function matchesPerformanceFilters(point){return matchesPerformanceMedium(point)&&matchesPerformanceSubtype(point)}
+function technologyClass(family){return family==="CMOS"?"cmos":family==="BiCMOS"?"bicmos":"other"}
+function markerPath(ctx,x,y,r,family){
+  ctx.beginPath();
+  if(family==="BiCMOS"){ctx.moveTo(x,y-r-1);ctx.lineTo(x+r+1,y);ctx.lineTo(x,y+r+1);ctx.lineTo(x-r-1,y);ctx.closePath()}
+  else if(family==="CMOS")ctx.arc(x,y,r,0,Math.PI*2);
+  else ctx.rect(x-r,y-r,r*2,r*2);
+}
+function fmtNumber(value,digits=3){
+  const n=finiteNumber(value);if(n==null)return "—";
+  if(Math.abs(n)>=100)return n.toLocaleString(undefined,{maximumFractionDigits:1});
+  if(Math.abs(n)>=10)return n.toLocaleString(undefined,{maximumFractionDigits:2});
+  return n.toLocaleString(undefined,{maximumFractionDigits:digits});
+}
+function finiteNumber(value){if(value==null||value==="")return null;const n=Number(value);return Number.isFinite(n)?n:null}
+function canvasFrame(id){
+  const canvas=$(id),rect=canvas.getBoundingClientRect(),dpr=Math.min(2,window.devicePixelRatio||1);
+  const width=Math.max(280,rect.width),height=Math.max(220,rect.height);
+  canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);
+  const ctx=canvas.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,width,height);
+  return {canvas,ctx,width,height};
+}
+function drawEmptyChart(frame,message){
+  frame.ctx.fillStyle="#65717a";frame.ctx.font='12px "Segoe UI"';frame.ctx.textAlign="center";frame.ctx.fillText(message,frame.width/2,frame.height/2);
+}
+function renderLegend(targetId,points){
+  const groups=new Map();points.forEach(point=>{const label=processGroup(point.performance),group=groups.get(label)||{count:0,performance:point.performance};group.count+=1;groups.set(label,group)});
+  const processHtml=[...groups.entries()].sort((a,b)=>b[1].count-a[1].count).map(([label,group])=>`<span class="legend-item"><i class="legend-dot" style="background:${processColor(group.performance)}"></i>${esc(label)} [${group.count}]</span>`).join("");
+  const techCounts=new Map(TECHNOLOGY_ORDER.map(family=>[family,0]));points.forEach(point=>{const family=technologyFamily(point);techCounts.set(family,(techCounts.get(family)||0)+1)});
+  const techHtml=TECHNOLOGY_ORDER.filter(family=>techCounts.get(family)>0).map(family=>`<span class="legend-item"><i class="tech-marker ${technologyClass(family)}"></i>${esc(family)} [${techCounts.get(family)}]</span>`).join("");
+  $(targetId).innerHTML=`${processHtml}<span class="legend-separator" aria-hidden="true"></span>${techHtml}`;
+}
+const ZOOMABLE_CHART_IDS=["rate-chart","energy-chart","pareto-chart","loss-chart","process-chart"],CHART_EDGE_GUTTER=20;
+const clampNumber=(value,min,max)=>Math.min(max,Math.max(min,value));
+function getChartView(id){
+  if(!performanceState.views.has(id))performanceState.views.set(id,{zoom:1,centerX:.5,centerY:.5});
+  return performanceState.views.get(id);
+}
+function updateZoomControls(id){
+  const view=getChartView(id),level=$(id+"-zoom");if(level)level.textContent=`${Math.round(view.zoom*100)}%`;
+  document.querySelectorAll(`[data-zoom-chart="${id}"]`).forEach(button=>{const action=button.dataset.zoomAction;button.disabled=(action==="in"&&view.zoom>=15.99)||((action==="out"||action==="reset")&&view.zoom<=1.001)});
+}
+function resetChartView(id,redraw=true){
+  performanceState.views.set(id,{zoom:1,centerX:.5,centerY:.5});
+  if(redraw)renderPerformance(false);else updateZoomControls(id);
+}
+function zoomChart(id,factor,anchorX=.5,anchorY=.5){
+  const view=getChartView(id),oldZoom=view.zoom,nextZoom=clampNumber(oldZoom*factor,1,16);
+  if(Math.abs(nextZoom-oldZoom)<.001){updateZoomControls(id);return}
+  const xFraction=clampNumber(anchorX,0,1),yFraction=clampNumber(anchorY,0,1),oldWindow=1/oldZoom,newWindow=1/nextZoom;
+  const anchorDataX=view.centerX-oldWindow/2+xFraction*oldWindow;
+  const anchorDataY=view.centerY-oldWindow/2+(1-yFraction)*oldWindow;
+  view.zoom=nextZoom;
+  if(nextZoom<=1.001){view.centerX=.5;view.centerY=.5}else{
+    view.centerX=clampNumber(anchorDataX-xFraction*newWindow+newWindow/2,newWindow/2,1-newWindow/2);
+    view.centerY=clampNumber(anchorDataY-(1-yFraction)*newWindow+newWindow/2,newWindow/2,1-newWindow/2);
+  }
+  renderPerformance(false);
+}
+function drawScatter(id,points,yGetter,{log=false,xLog=false,yLabel="",legendId="",xGetter=point=>point.year,xLabel="",yearAxis=true,frontierIds=new Set()}={}){
+  const frame=canvasFrame(id),{ctx,width,height,canvas}=frame;
+  const data=points.map(point=>{const xValue=finiteNumber(xGetter(point)),value=finiteNumber(yGetter(point));return {point,xValue,xAxisValue:xValue!=null?(xLog?Math.log10(xValue):xValue):null,value,yValue:value!=null?(log?Math.log10(value):value):null}}).filter(item=>item.xValue!=null&&item.value!=null&&(!xLog||item.xValue>0)&&item.value>0&&Number.isFinite(item.xAxisValue)&&Number.isFinite(item.yValue));
+  if(!data.length){drawEmptyChart(frame,"표시할 근거 연결 값이 없습니다.");performanceState.hits.set(id,[]);performanceState.layouts.delete(id);if(legendId)$(legendId).innerHTML="";updateZoomControls(id);return 0}
+  const margin={left:58,right:18,top:16,bottom:38},plotW=width-margin.left-margin.right,plotH=height-margin.top-margin.bottom,xInset=Math.min(CHART_EDGE_GUTTER,plotW*.08),dataPlotW=plotW-xInset*2;
+  let baseMinX=Math.min(...data.map(item=>item.xAxisValue)),baseMaxX=Math.max(...data.map(item=>item.xAxisValue));if(xLog){baseMinX=Math.floor(baseMinX);baseMaxX=Math.ceil(baseMaxX)}if(baseMinX===baseMaxX){baseMinX-=1;baseMaxX+=1}
+  let baseMinY=Math.min(...data.map(item=>item.yValue)),baseMaxY=Math.max(...data.map(item=>item.yValue));
+  if(log){baseMinY=Math.floor(baseMinY);baseMaxY=Math.ceil(baseMaxY)}else{baseMinY=Math.min(0,baseMinY);baseMaxY*=1.08}
+  if(baseMinY===baseMaxY)baseMaxY=baseMinY+1;
+  const view=getChartView(id),windowFraction=1/view.zoom,spanX=baseMaxX-baseMinX,spanY=baseMaxY-baseMinY;
+  const minX=baseMinX+(view.centerX-windowFraction/2)*spanX,maxX=minX+windowFraction*spanX;
+  const minY=baseMinY+(view.centerY-windowFraction/2)*spanY,maxY=minY+windowFraction*spanY;
+  const xScaleAxis=x=>margin.left+xInset+(x-minX)/(maxX-minX)*dataPlotW;
+  const xScale=x=>xScaleAxis(xLog?Math.log10(x):x);
+  const yScale=y=>margin.top+(maxY-(log?Math.log10(y):y))/(maxY-minY)*plotH;
+  performanceState.layouts.set(id,{margin,plotW,plotH,xInset,dataPlotW});
+  ctx.font='10px "Segoe UI"';ctx.lineWidth=1;ctx.textAlign="right";ctx.textBaseline="middle";
+  for(let i=0;i<=4;i++){
+    const t=i/4,y=margin.top+t*plotH,value=maxY-t*(maxY-minY);ctx.strokeStyle="#dde0dc";ctx.setLineDash([3,4]);ctx.beginPath();ctx.moveTo(margin.left,y);ctx.lineTo(width-margin.right,y);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle="#65717a";ctx.fillText(log?fmtNumber(10**value):fmtNumber(value),margin.left-7,y);
+  }
+  ctx.textAlign="center";ctx.textBaseline="top";
+  let tickValues=[];
+  if(yearAxis){
+    const start=Math.ceil(minX),end=Math.floor(maxX);
+    if(start<=end){const step=Math.max(1,Math.ceil((end-start+1)/6));for(let value=start;value<=end;value+=step)tickValues.push(value);if(tickValues[tickValues.length-1]!==end)tickValues.push(end)}
+    else tickValues=[minX,maxX];
+  }else for(let i=0;i<6;i++)tickValues.push(minX+(maxX-minX)*(i/5));
+  [...new Set(tickValues)].forEach(value=>{ctx.fillStyle="#65717a";ctx.fillText(yearAxis?String(Math.round(value)):fmtNumber(xLog?10**value:value),xScaleAxis(value),height-margin.bottom+8)});
+  if(xLabel){ctx.fillStyle="#123249";ctx.font='11px "Segoe UI"';ctx.fillText(xLabel,margin.left+plotW/2,height-13)}
+  ctx.save();ctx.translate(12,margin.top+plotH/2);ctx.rotate(-Math.PI/2);ctx.textAlign="center";ctx.fillStyle="#123249";ctx.font='11px "Segoe UI"';ctx.fillText(yLabel,0,0);ctx.restore();
+  const hits=[],visibleData=data.filter(item=>item.xAxisValue>=minX&&item.xAxisValue<=maxX&&item.yValue>=minY&&item.yValue<=maxY);
+  const clusters=new Map(),offsets=new Map();visibleData.forEach(item=>{const key=`${item.xAxisValue.toFixed(6)}|${item.yValue.toFixed(6)}`;if(!clusters.has(key))clusters.set(key,[]);clusters.get(key).push(item)});
+  clusters.forEach(cluster=>{if(cluster.length===1){offsets.set(cluster[0],{x:0,y:0});return}const radius=Math.min(12,5+cluster.length*.7);cluster.forEach((item,index)=>{const angle=Math.PI*2*index/cluster.length;offsets.set(item,{x:Math.cos(angle)*radius,y:Math.sin(angle)*radius})})});
+  ctx.save();ctx.beginPath();ctx.rect(margin.left,margin.top,plotW,plotH);ctx.clip();visibleData.forEach(item=>{const offset=offsets.get(item)||{x:0,y:0},x=xScale(item.xValue)+offset.x,y=yScale(item.value)+offset.y,source=item.point.performance.source_kind,family=technologyFamily(item.point),measurementId=Number(item.point.performance?.measurement_id),isFrontier=frontierIds.has(measurementId);ctx.globalAlpha=source==="abstract"?.66:.86;ctx.fillStyle=processColor(item.point.performance);ctx.strokeStyle=isFrontier?"#071c2c":source==="abstract"?"#fff":"#183142";ctx.lineWidth=isFrontier?2.8:source==="abstract"?1:1.3;markerPath(ctx,x,y,isFrontier?5.3:4.2,family);ctx.fill();ctx.stroke();if(isFrontier){ctx.globalAlpha=1;ctx.strokeStyle="#fff";ctx.lineWidth=.8;markerPath(ctx,x,y,3.5,family);ctx.stroke()}hits.push({x,y,r:10,point:item.point,value:item.value})});ctx.restore();ctx.globalAlpha=1;
+  performanceState.hits.set(id,hits);canvas.title="점에 마우스를 올리면 논문 정보와 블록도가 표시되고, 클릭하면 고정됩니다. 휠로 확대하고 드래그해 이동할 수 있습니다.";
+  if(legendId)renderLegend(legendId,data.map(item=>item.point));
+  updateZoomControls(id);
+  return data.length;
+}
+function quantile(sorted,q){const pos=(sorted.length-1)*q,base=Math.floor(pos),rest=pos-base;return sorted[base+1]!==undefined?sorted[base]+rest*(sorted[base+1]-sorted[base]):sorted[base]}
+function drawProcessBoxes(points){
+  const id="process-chart",frame=canvasFrame(id),{ctx,width,height,canvas}=frame,nodeGroups=new Map(),eligiblePoints=[];
+  points.forEach(point=>{
+    const energy=finiteNumber(point.performance?.energy_pj_bit),node=finiteNumber(point.performance?.process_nm);if(energy==null||energy<=0||node==null||node<=0)return;
+    const label=processGroup(point.performance),family=technologyFamily(point);eligiblePoints.push(point);
+    if(!nodeGroups.has(label))nodeGroups.set(label,{label,node,families:new Map()});
+    const group=nodeGroups.get(label);if(!group.families.has(family))group.families.set(family,[]);group.families.get(family).push({value:energy,point});
+  });
+  const data=[...nodeGroups.values()].sort((a,b)=>a.node-b.node);
+  if(!data.length){drawEmptyChart(frame,"공정과 energy/bit가 함께 있는 값이 없습니다.");performanceState.hits.set(id,[]);performanceState.layouts.delete(id);$("process-legend").innerHTML="";updateZoomControls(id);return 0}
+  const all=data.flatMap(group=>[...group.families.values()].flatMap(entries=>entries.map(entry=>entry.value))),margin={left:58,right:16,top:15,bottom:62},plotW=width-margin.left-margin.right,plotH=height-margin.top-margin.bottom,xInset=Math.min(CHART_EDGE_GUTTER,plotW*.08),dataPlotW=plotW-xInset*2;
+  const baseMinX=-.5,baseMaxX=data.length-.5,baseMinY=Math.floor(Math.log10(Math.min(...all))),rawMaxY=Math.ceil(Math.log10(Math.max(...all))),baseMaxY=rawMaxY===baseMinY?baseMinY+1:rawMaxY;
+  const view=getChartView(id),windowFraction=1/view.zoom,spanX=baseMaxX-baseMinX,spanY=baseMaxY-baseMinY;
+  const minX=baseMinX+(view.centerX-windowFraction/2)*spanX,maxX=minX+windowFraction*spanX;
+  const minY=baseMinY+(view.centerY-windowFraction/2)*spanY,maxY=minY+windowFraction*spanY;
+  const xScale=index=>margin.left+xInset+(index-minX)/(maxX-minX)*dataPlotW,yScale=value=>margin.top+(maxY-Math.log10(value))/(maxY-minY)*plotH;
+  performanceState.layouts.set(id,{margin,plotW,plotH,xInset,dataPlotW});
+  ctx.font='10px "Segoe UI"';ctx.textAlign="right";ctx.textBaseline="middle";
+  for(let i=0;i<=4;i++){const t=i/4,y=margin.top+t*plotH,power=maxY-t*(maxY-minY);ctx.strokeStyle="#dde0dc";ctx.setLineDash([3,4]);ctx.beginPath();ctx.moveTo(margin.left,y);ctx.lineTo(width-margin.right,y);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle="#65717a";ctx.fillText(fmtNumber(10**power),margin.left-7,y)}
+  const hits=[],categoryStep=dataPlotW/(maxX-minX),groupBand=Math.min(58,categoryStep*.74);
+  ctx.save();ctx.beginPath();ctx.rect(margin.left,margin.top,plotW,plotH);ctx.clip();
+  data.forEach((group,index)=>{
+    if(index<minX-.5||index>maxX+.5)return;
+    const familyNames=TECHNOLOGY_ORDER.filter(family=>group.families.has(family)),slotWidth=groupBand/familyNames.length;
+    familyNames.forEach((family,familyIndex)=>{
+      const entries=group.families.get(family),values=entries.map(entry=>entry.value).sort((a,b)=>a-b),q1=quantile(values,.25),median=quantile(values,.5),q3=quantile(values,.75),low=values[0],high=values[values.length-1];
+      const x=xScale(index)-groupBand/2+slotWidth*(familyIndex+.5),boxWidth=Math.max(7,Math.min(25,slotWidth*.7)),fillAlpha=family==="BiCMOS"?.34:family==="CMOS"?.18:.08;
+      ctx.setLineDash(family==="BiCMOS"?[3,2]:family==="Other / unspecified"?[1,2]:[]);ctx.strokeStyle="#123249";ctx.fillStyle=processColor({process_nm:group.node});ctx.globalAlpha=fillAlpha;ctx.fillRect(x-boxWidth/2,yScale(q3),boxWidth,yScale(q1)-yScale(q3));ctx.globalAlpha=1;ctx.strokeRect(x-boxWidth/2,yScale(q3),boxWidth,yScale(q1)-yScale(q3));ctx.beginPath();ctx.moveTo(x,yScale(high));ctx.lineTo(x,yScale(q3));ctx.moveTo(x,yScale(q1));ctx.lineTo(x,yScale(low));ctx.moveTo(x-boxWidth/3,yScale(high));ctx.lineTo(x+boxWidth/3,yScale(high));ctx.moveTo(x-boxWidth/3,yScale(low));ctx.lineTo(x+boxWidth/3,yScale(low));ctx.stroke();ctx.setLineDash([]);ctx.strokeStyle="#f05f45";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-boxWidth/2,yScale(median));ctx.lineTo(x+boxWidth/2,yScale(median));ctx.stroke();ctx.lineWidth=1;
+      entries.forEach((entry,j)=>{const dotX=x+((j%5)-2)*Math.min(1.7,boxWidth/8),dotY=yScale(entry.value),energyLog=Math.log10(entry.value);ctx.fillStyle=processColor({process_nm:group.node});ctx.strokeStyle="#183142";ctx.globalAlpha=.4;markerPath(ctx,dotX,dotY,2.4,family);ctx.fill();ctx.stroke();if(energyLog>=minY&&energyLog<=maxY)hits.push({x:dotX,y:dotY,r:9,point:entry.point,value:entry.value})});ctx.globalAlpha=1;
+    });
+  });
+  ctx.restore();
+  data.forEach((group,index)=>{if(index<minX||index>maxX)return;const x=xScale(index);ctx.save();ctx.translate(x,height-margin.bottom+10);ctx.rotate(-Math.PI/5);ctx.textAlign="right";ctx.textBaseline="middle";ctx.fillStyle="#65717a";ctx.fillText(group.label,0,0);ctx.restore()});
+  performanceState.hits.set(id,hits);canvas.title="박스는 공정별 분포, 마커 모양은 CMOS/BiCMOS 구분입니다. 점에 마우스를 올리면 논문 정보와 블록도가 표시되고, 클릭하면 고정됩니다. 휠로 확대하고 드래그해 이동할 수 있습니다.";renderLegend("process-legend",eligiblePoints);updateZoomControls(id);
+  ctx.save();ctx.translate(12,margin.top+plotH/2);ctx.rotate(-Math.PI/2);ctx.textAlign="center";ctx.fillStyle="#123249";ctx.font='11px "Segoe UI"';ctx.fillText("Energy/bit (pJ, log)",0,0);ctx.restore();return all.length;
+}
+function pointRate(point,mode=performanceState.rateMode){const p=point.performance||{};if(mode==="aggregate")return p.aggregate_rate_gbps;if(mode==="reported")return p.reported_rate_gbps;return p.lane_rate_gbps}
+function paretoFrontierIds(points,mode){
+  const groups=new Map();
+  points.forEach(point=>{const x=finiteNumber(pointRate(point,mode)),y=finiteNumber(point.performance?.energy_pj_bit),medium=linkMedium(point),scope=String(point.performance?.energy_component_scope||"unknown"),rateDenominator=mode==="reported"?String(point.performance?.rate_scope||"unknown"):mode;if(x==null||y==null||x<=0||y<=0||!["electrical","optical"].includes(medium)||scope==="unknown")return;const key=`${medium}|${scope}|${rateDenominator}`;if(!groups.has(key))groups.set(key,[]);groups.get(key).push({id:Number(point.performance?.measurement_id),x,y})});
+  const frontier=new Set();groups.forEach(rows=>{if(rows.length<3)return;rows.forEach(candidate=>{const dominated=rows.some(other=>other.id!==candidate.id&&other.x>=candidate.x&&other.y<=candidate.y&&(other.x>candidate.x||other.y<candidate.y));if(!dominated)frontier.add(candidate.id)})});return frontier;
+}
+function rateLabel(point){const p=point.performance||{},lane=finiteNumber(p.lane_rate_gbps),lanes=finiteNumber(p.lane_count),aggregate=finiteNumber(p.aggregate_rate_gbps),reported=finiteNumber(p.reported_rate_gbps);if(lane!=null&&lane>0&&lanes!=null&&lanes>1)return `${fmtNumber(lane)} Gb/s/lane · ${fmtNumber(lanes)} lanes · ${fmtNumber(aggregate)} Gb/s agg.`;if(lane!=null&&lane>0)return `${fmtNumber(lane)} Gb/s/lane`;if(reported!=null&&reported>0)return `${fmtNumber(reported)} Gb/s reported`;return "—"}
+function firstAuthorCitation(rawAuthors){
+  const authors=String(rawAuthors||"").replace(/\s+/g," ").trim();if(!authors)return "Author unavailable";
+  let first=authors,multiple=false;
+  const semicolonParts=authors.split(/\s*;\s*/).filter(Boolean);
+  if(semicolonParts.length>1){first=semicolonParts[0];multiple=true}else{
+    const andParts=authors.split(/\s+(?:and|&)\s+/i).filter(Boolean);
+    if(andParts.length>1){first=andParts[0].replace(/,\s*$/,"");multiple=true}else{
+      const commaParts=authors.split(/\s*,\s*/).filter(Boolean);
+      if(commaParts.length>=3){first=commaParts[0];multiple=true}
+    }
+  }
+  const commaSurname=first.includes(",")?first.split(",",1)[0].trim():"";
+  const tokens=first.replace(/[,.;]+$/g,"").split(/\s+/).filter(Boolean);
+  const surname=commaSurname||(tokens[tokens.length-1]||first);
+  return `${surname}${multiple?" et al.":""}`;
+}
+let pointAnchor=null,pointPinned=false,pointHoverKey=null,pointHoverTimer=null,pointLeaveTimer=null;
+function positionPointPopover(){
+  const popover=$("point-popover");if(popover.hidden||!pointAnchor)return;
+  const gap=12,width=popover.offsetWidth,height=popover.offsetHeight;
+  let left=pointAnchor.x+14,top=pointAnchor.y+14;
+  if(left+width>window.innerWidth-gap)left=pointAnchor.x-width-14;
+  if(top+height>window.innerHeight-gap)top=window.innerHeight-height-gap;
+  popover.style.left=`${Math.max(gap,left)}px`;popover.style.top=`${Math.max(gap,top)}px`;
+}
+const pointDiagrams=SerdesDiagrams.create($("point-popover-diagram"),positionPointPopover);
+function hidePointPopover(){clearTimeout(pointHoverTimer);clearTimeout(pointLeaveTimer);pointHoverKey=null;pointPinned=false;pointDiagrams.clear();$("point-popover").hidden=true}
+function energyBasisLabel(performance){
+  const basis=performance?.energy_basis;
+  if(basis==="calculated_power_per_rate")return "P/R calculated";
+  if(basis==="converted_power_per_rate")return "reported mW/(Gb/s)";
+  if(basis==="reported_user_sheet")return "reported · User Survey";
+  if(basis==="reported_energy"||basis==="reported")return "reported";
+  return basis?String(basis).replaceAll("_"," "):"";
+}
+function energyValueLabel(performance){
+  if(performance?.energy_pj_bit==null)return "—";
+  const basis=energyBasisLabel(performance);
+  return `${fmtNumber(performance.energy_pj_bit)} pJ/bit${basis?` · ${basis}`:""}`;
+}
+function conditionLabels(point){
+  const p=point?.performance||{},labels=[];
+  if(p.channel_loss_db!=null)labels.push(`Loss ${fmtNumber(p.channel_loss_db)} dB${p.loss_frequency_ghz!=null?` @ ${fmtNumber(p.loss_frequency_ghz)} GHz`:""}`);
+  if(p.ber!=null)labels.push(`BER ${Number(p.ber).toExponential(1)}${p.ber_scope&&p.ber_scope!=="unknown"?` · ${SerdesLabels.berScope(p.ber_scope)}`:""}`);
+  if(p.power_mw!=null)labels.push(`Power ${fmtNumber(p.power_mw)} mW${p.power_scope&&p.power_scope!=="unknown"?` · ${SerdesLabels.component(p.power_scope)}`:""}`);
+  if(p.energy_loss_normalized_pj_bit_db!=null)labels.push(`${fmtNumber(p.energy_loss_normalized_pj_bit_db)} pJ/b/dB`);
+  if(p.energy_pj_bit!=null)labels.push(`Energy scope ${scopeLabel(p.energy_component_scope||"unknown")}`);
+  if(p.component_scope&&p.component_scope!=="unknown")labels.push(SerdesLabels.component(p.component_scope));
+  if(p.modulation)labels.push(SerdesLabels.modulation(p.modulation));
+  return labels;
+}
+function showPointPopover(hit,event,pinned=true){
+  clearTimeout(pointHoverTimer);clearTimeout(pointLeaveTimer);pointPinned=pinned;pointAnchor={x:event.clientX,y:event.clientY};
+  const point=hit.point||{},popover=$("point-popover"),url=safeUrl(point.url||point.evidence_url);
+  $("point-popover-title").textContent=point.title||"Untitled implementation";
+  $("point-popover-year").textContent=point.year||"Year unavailable";
+  $("point-popover-author").textContent=firstAuthorCitation(point.authors);
+  $("point-popover-tech").textContent=technologyFamily(point);
+  $("point-popover-medium").textContent=`${mediumLabel(linkMedium(point))} · ${subtypeLabel(linkSubtype(point))}`;
+  const p=point.performance||{},process=p.process_text||(p.process_nm!=null?`${fmtNumber(p.process_nm)} nm`:"—"),details=[
+    ["Rate",rateLabel(point)],["Energy",energyValueLabel(p)],
+    ["Process",process],...[...conditionLabels(point).map((value,index)=>[index===0?"Conditions":"",value])],
+    ["Evidence",`${p.source_label||p.source_kind||"Unknown"} · ${p.evidence_tier||"unclassified"} · ${p.review_status||"unreviewed"}`],
+    ["Classification",`${p.scope_source||"none"} · ${scopeLabel(p.energy_component_scope||"unknown")}`],
+  ].filter(([,value])=>value&&value!=="—");
+  $("point-popover-metrics").innerHTML=details.map(([label,value])=>`<span>${label?`<b>${esc(label)}</b><br>`:""}${esc(value)}</span>`).join("");
+  const link=$("point-popover-link");link.hidden=!url;if(url)link.href=url;
+  $("point-popover-link-label").textContent=point.source_system==="optica"?"Optica 원문으로 이동":point.article_number?"IEEE Xplore로 이동":"데이터 출처로 이동";
+  popover.hidden=false;
+  pointDiagrams.show(point.article_number,point.performance?.measurement_id);
+  positionPointPopover();
+}
+function surveySelectHtml(item){return SURVEY_AI_VISIBLE&&item.article_number?`<button type="button" class="sai-select-button" data-survey-select="${esc(item.article_number)}" data-title="${esc(item.title)}" aria-pressed="false">비교 선택 +</button>`:""}
+function renderPerformanceTable(points){
+  const hasMetric=point=>{const p=point.performance||{};return p.energy_pj_bit!=null||p.lane_rate_gbps!=null||p.reported_rate_gbps!=null||p.process_nm!=null||p.channel_loss_db!=null};
+  const eligible=[...points].filter(hasMetric),newest=[...eligible].sort((a,b)=>(Number(b.year)||0)-(Number(a.year)||0)||Number(pointRate(b)||0)-Number(pointRate(a)||0)),oldest=[...eligible].sort((a,b)=>(Number(a.year)||0)-(Number(b.year)||0)||Number(pointRate(b)||0)-Number(pointRate(a)||0));
+  const unmatched=[...performanceState.unmatched].filter(matchesPerformanceFilters).filter(hasMetric).sort((a,b)=>(Number(a.year)||0)-(Number(b.year)||0));
+  let rows;if(performanceState.tableMode==="unmatched")rows=unmatched;else if(performanceState.tableMode==="all")rows=newest;else{const seen=new Set();rows=[...newest.slice(0,12),...oldest.slice(0,8)].filter(point=>{const key=point.family_id?`family:${point.family_id}`:`implementation:${point.implementation_id}`;if(seen.has(key))return false;seen.add(key);return true})}
+  const tableNotes={coverage:"모집단 전체나 품질·인용 순위가 아니라, 차트에 연결된 대표 성능점 중 최신 12개와 초기 8개를 보여주는 미리보기입니다.",all:"현재 근거 등급에서 차트에 연결된 대표 성능점 전체를 최신 연도순으로 보여줍니다.",unmatched:"WLink 원본에는 있으나 현재 SQL 논문과 연결되지 않은 성능점입니다. 최신 전수판정의 Core + Adjacent 모집단에는 포함되지 않습니다."};
+  $("performance-table-note").textContent=tableNotes[performanceState.tableMode]||tableNotes.coverage;
+  $("performance-table-count").textContent=`${rows.length.toLocaleString()}개 표시`;
+  $("performance-table").innerHTML=rows.length?rows.map(point=>{const p=point.performance,url=safeUrl(point.url||point.evidence_url),title=url?`<a href="${esc(url)}" target="_blank" rel="noopener">${esc(point.title)}</a>`:esc(point.title),status=p.review_status==="verified"?"Verified":p.review_status==="curated_reference"?"Curated":"Auto",technology=technologyFamily(point),process=p.process_text||(p.process_nm!=null?`${fmtNumber(p.process_nm)}nm`:"—"),conditions=conditionLabels(point),basis=energyBasisLabel(p);return `<tr><td>${esc(point.year||"—")}</td><td>${title}${surveySelectHtml(point)}<br><small>${esc(point.venue||"")}${point.family_id?` · family ${esc(point.family_id)}`:""}</small></td><td>${mediumBadge(point)}</td><td>${esc(rateLabel(point))}</td><td>${p.energy_pj_bit!=null?`${fmtNumber(p.energy_pj_bit)} pJ/bit${basis?`<br><small>${esc(basis)}</small>`:""}<br><small>${esc(scopeLabel(p.energy_component_scope||"unknown"))}</small>`:"—"}</td><td>${esc(process)}<br><small>${esc(technology)}</small></td><td>${conditions.length?conditions.map(value=>esc(value)).join("<br>"):"—"}</td><td><span class="provenance ${esc(p.source_kind)}">${esc(p.source_label)} · ${esc(p.evidence_tier||status)}</span></td></tr>`}).join(""):'<tr><td colspan="8">근거 연결 성능점이 없습니다.</td></tr>';
+  window.SurveyAI?.syncSelection();
+}
+function pointsForSet(name){return (performanceState.chartSets[name]||[]).map(id=>performanceState.pointMap.get(Number(id))).filter(Boolean)}
+function renderPerformance(includeTable=true){
+  hidePointPopover();
+  const mode=performanceState.rateMode,rateSet=mode==="aggregate"?"aggregate_rate":mode==="reported"?"reported_rate":"lane_rate",energyRateSet=`${mode}_energy`,filtered=name=>pointsForSet(name).filter(matchesPerformanceFilters),ratePoints=filtered(rateSet),energyPoints=filtered("energy"),lossPoints=filtered("energy_loss"),processPoints=filtered("energy_process"),representative=filtered("representative"),paretoAll=filtered(energyRateSet),frontierIds=paretoFrontierIds(paretoAll,mode),visibleFrontierCount=frontierIds.size,paretoPoints=performanceState.paretoMode==="frontier"?paretoAll.filter(point=>frontierIds.has(Number(point.performance?.measurement_id))):paretoAll;
+  $("rate-chart-title").textContent=mode==="aggregate"?"Aggregate rate vs. year":mode==="reported"?"Reported rate vs. year":"Lane rate vs. year";
+  $("pareto-chart-title").textContent=`${mode==="aggregate"?"Aggregate":mode==="reported"?"Reported":"Lane"} rate vs. Energy/bit — scope-aware Pareto`;
+  const rateCount=drawScatter("rate-chart",ratePoints,point=>pointRate(point,mode),{yLabel:mode==="aggregate"?"Aggregate rate (Gb/s)":mode==="reported"?"Reported rate (Gb/s)":"Lane rate (Gb/s)",legendId:"rate-legend"});
+  const energyCount=drawScatter("energy-chart",energyPoints,point=>point.performance?.energy_pj_bit,{log:true,yLabel:"Energy/bit (pJ, log)",legendId:"energy-legend"});
+  const paretoCount=drawScatter("pareto-chart",paretoPoints,point=>point.performance?.energy_pj_bit,{log:true,xLog:true,yLabel:"Energy/bit (pJ, log)",legendId:"pareto-legend",xGetter:point=>pointRate(point,mode),xLabel:`${mode==="aggregate"?"Aggregate":mode==="reported"?"Reported":"Lane"} rate (Gb/s, log)`,yearAxis:false,frontierIds});
+  if(paretoCount)$("pareto-legend").insertAdjacentHTML("beforeend",`<span class="legend-separator" aria-hidden="true"></span><span class="legend-item"><i class="tech-marker cmos" style="background:transparent;border-width:2px"></i>Pareto frontier [${visibleFrontierCount}]</span>`);
+  const lossCount=drawScatter("loss-chart",lossPoints,point=>point.performance?.energy_pj_bit,{log:true,yLabel:"Energy/bit (pJ, log)",legendId:"loss-legend",xGetter:point=>point.performance?.channel_loss_db,xLabel:"Channel loss (dB)",yearAxis:false});
+  const processCount=drawProcessBoxes(processPoints);$("rate-sample").textContent=`표시 n=${rateCount}`;$("energy-sample").textContent=`표시 n=${energyCount}`;$("pareto-sample").textContent=`표시 n=${paretoCount} · frontier ${visibleFrontierCount}`;$("loss-sample").textContent=`표시 n=${lossCount}`;$("process-sample").textContent=`표시 n=${processCount}`;if(includeTable)renderPerformanceTable(performanceState.scopeMode==="all"?representative:energyPoints);
+}
+async function loadPerformance(){
+  const generation=++performanceState.requestGeneration;if(performanceState.controller)performanceState.controller.abort();const controller=new AbortController();performanceState.controller=controller;
+  performanceState.points=[];performanceState.pointMap=new Map();performanceState.chartSets={};performanceState.unmatched=[];renderPerformance();$("performance-table").innerHTML='<tr><td colspan="8">성능 데이터를 불러오는 중…</td></tr>';
+  try{const query=new URLSearchParams({evidence_tier:performanceState.sourceMode,energy_scope:performanceState.scopeMode}),data=await fetchJson(API+"/api/serdes/performance?"+query.toString(),{signal:controller.signal});if(generation!==performanceState.requestGeneration)return;performanceState.points=data.points||[];performanceState.pointMap=new Map(performanceState.points.map(point=>[Number(point.performance?.measurement_id),point]));performanceState.chartSets=data.chart_sets||{};performanceState.unmatched=data.unmatched_points||[];const option=$("performance-table-mode").querySelector('option[value="unmatched"]'),count=Number(data.coverage?.unmatched_total||0);if(option){option.textContent=`WLink 원본 · 논문 미연결 (${count.toLocaleString()})`}renderPerformance()}catch(error){if(error.name==="AbortError"||generation!==performanceState.requestGeneration)return;if(error.message!=="auth"){$("performance-table").innerHTML='<tr><td colspan="8">성능 데이터를 불러오지 못했습니다.</td></tr>'}}finally{if(generation===performanceState.requestGeneration)performanceState.controller=null}
+}
+$("rate-mode").addEventListener("change",event=>{performanceState.rateMode=event.target.value;resetChartView("rate-chart",false);resetChartView("pareto-chart",false);renderPerformance(false)});
+$("performance-source-mode").addEventListener("change",event=>{performanceState.sourceMode=event.target.value;ZOOMABLE_CHART_IDS.forEach(id=>resetChartView(id,false));loadPerformance()});
+$("performance-medium-mode").addEventListener("change",event=>{performanceState.mediumMode=event.target.value;ZOOMABLE_CHART_IDS.forEach(id=>resetChartView(id,false));renderPerformance()});
+$("performance-subtype-mode").addEventListener("change",event=>{performanceState.subtypeMode=event.target.value;ZOOMABLE_CHART_IDS.forEach(id=>resetChartView(id,false));renderPerformance()});
+$("performance-scope-mode").addEventListener("change",event=>{performanceState.scopeMode=event.target.value;ZOOMABLE_CHART_IDS.forEach(id=>resetChartView(id,false));loadPerformance()});
+$("performance-pareto-mode").addEventListener("change",event=>{performanceState.paretoMode=event.target.value;resetChartView("pareto-chart",false);renderPerformance(false)});
+$("performance-table-mode").addEventListener("change",event=>{performanceState.tableMode=event.target.value;renderPerformanceTable(pointsForSet(performanceState.scopeMode==="all"?"representative":"energy").filter(matchesPerformanceFilters))});
+document.querySelectorAll("[data-zoom-chart]").forEach(button=>button.addEventListener("click",()=>{const id=button.dataset.zoomChart,action=button.dataset.zoomAction;if(action==="reset")resetChartView(id);else zoomChart(id,action==="in"?1.5:1/1.5)}));
+ZOOMABLE_CHART_IDS.forEach(id=>{
+  const canvas=$(id);
+  canvas.addEventListener("wheel",event=>{const layout=performanceState.layouts.get(id);if(!layout)return;event.preventDefault();const rect=canvas.getBoundingClientRect(),x=(event.clientX-rect.left-layout.margin.left-(layout.xInset||0))/(layout.dataPlotW||layout.plotW),y=(event.clientY-rect.top-layout.margin.top)/layout.plotH;zoomChart(id,event.deltaY<0?1.35:1/1.35,x,y)},{passive:false});
+  canvas.addEventListener("pointerdown",event=>{const view=getChartView(id);if(event.button!==0||view.zoom<=1.001)return;performanceState.drag={id,pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,originX:view.centerX,originY:view.centerY,moved:false};canvas.classList.add("panning");canvas.setPointerCapture(event.pointerId);event.preventDefault()});
+  canvas.addEventListener("pointermove",event=>{const drag=performanceState.drag,layout=performanceState.layouts.get(id);if(!drag||drag.id!==id||drag.pointerId!==event.pointerId||!layout)return;const dx=event.clientX-drag.startX,dy=event.clientY-drag.startY;if(!drag.moved&&Math.hypot(dx,dy)<3)return;drag.moved=true;const view=getChartView(id),windowFraction=1/view.zoom;view.centerX=clampNumber(drag.originX-dx/(layout.dataPlotW||layout.plotW)*windowFraction,windowFraction/2,1-windowFraction/2);view.centerY=clampNumber(drag.originY+dy/layout.plotH*windowFraction,windowFraction/2,1-windowFraction/2);renderPerformance(false)});
+  const finishPan=event=>{const drag=performanceState.drag;if(!drag||drag.id!==id||drag.pointerId!==event.pointerId)return;if(drag.moved){performanceState.suppressClick.add(id);setTimeout(()=>performanceState.suppressClick.delete(id),0)}performanceState.drag=null;canvas.classList.remove("panning");if(canvas.hasPointerCapture(event.pointerId))canvas.releasePointerCapture(event.pointerId)};
+  canvas.addEventListener("pointerup",finishPan);canvas.addEventListener("pointercancel",finishPan);
+});
+ZOOMABLE_CHART_IDS.forEach(id=>$(id).addEventListener("click",event=>{if(performanceState.suppressClick.has(id)){performanceState.suppressClick.delete(id);return}const rect=event.currentTarget.getBoundingClientRect(),x=event.clientX-rect.left,y=event.clientY-rect.top,hit=(performanceState.hits.get(id)||[]).find(item=>Math.hypot(item.x-x,item.y-y)<=item.r);if(hit)showPointPopover(hit,event);else hidePointPopover()}));
+ZOOMABLE_CHART_IDS.forEach(id=>{
+  const canvas=$(id);
+  canvas.addEventListener('pointermove',event=>{
+    if(event.pointerType==='touch'||event.buttons||performanceState.drag||pointPinned)return;
+    const rect=canvas.getBoundingClientRect(),x=event.clientX-rect.left,y=event.clientY-rect.top;
+    const hit=(performanceState.hits.get(id)||[]).filter(item=>Math.hypot(item.x-x,item.y-y)<=item.r).sort((a,b)=>Math.hypot(a.x-x,a.y-y)-Math.hypot(b.x-x,b.y-y))[0];
+    const key=hit?`${id}:${hit.point.performance?.measurement_id}`:null;
+    if(key===pointHoverKey)return;
+    clearTimeout(pointHoverTimer);clearTimeout(pointLeaveTimer);pointHoverKey=key;
+    if(hit){const anchor={clientX:event.clientX,clientY:event.clientY};pointHoverTimer=setTimeout(()=>showPointPopover(hit,anchor,false),180);}
+    else pointLeaveTimer=setTimeout(()=>{if(!pointPinned)hidePointPopover();},350);
+  });
+  canvas.addEventListener('pointerleave',()=>{clearTimeout(pointHoverTimer);clearTimeout(pointLeaveTimer);pointHoverKey=null;if(!pointPinned)pointLeaveTimer=setTimeout(hidePointPopover,350);});
+});
+$("point-popover").addEventListener('pointerenter',()=>clearTimeout(pointLeaveTimer));
+$("point-popover").addEventListener('pointerleave',()=>{clearTimeout(pointLeaveTimer);if(!pointPinned)pointLeaveTimer=setTimeout(hidePointPopover,350);});
+window.addEventListener('resize',positionPointPopover);
+$("point-popover-close").addEventListener("click",hidePointPopover);
+document.addEventListener("click",event=>{const popover=$("point-popover");if(!popover.hidden&&!popover.contains(event.target)&&event.target.tagName!=="CANVAS")hidePointPopover()});
+document.addEventListener("keydown",event=>{if(event.key==="Escape")hidePointPopover()});
+let resizeTimer;window.addEventListener("resize",()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(()=>{if(performanceState.points.length)renderPerformance(false)},180)});
+
+function queryString(){
+  const p=new URLSearchParams();
+  Object.entries(state).forEach(([key,value])=>{if(value!==""&&value!==false)p.set(key,value===true?"1":String(value))});
+  return p.toString();
+}
+
+function tagHtml(taxonomy){
+  const signals=(taxonomy?.signals||[]).slice(0,2).map(x=>`<span class="tag">${esc(x)}</span>`);
+  const blocks=(taxonomy?.blocks||[]).slice(0,2).map(x=>`<span class="tag block">${esc(x)}</span>`);
+  return [...signals,...blocks].join("");
+}
+
+function metricHtml(item){
+  const p=item.performance;
+  if(p){
+    const values=[];const rate=rateLabel({performance:p});if(rate!=="—")values.push(`<span class="metric"><b>Rate</b> ${esc(rate)}</span>`);
+    if(p.energy_pj_bit!=null){const basis=energyBasisLabel(p);values.push(`<span class="metric"><b>Energy</b> ${fmtNumber(p.energy_pj_bit)} pJ/bit · ${esc(scopeLabel(p.energy_component_scope||"unknown"))}${basis?` <small class="energy-basis">${esc(basis)}</small>`:""}</span>`)};
+    if(p.process_text||p.process_nm!=null)values.push(`<span class="metric"><b>Process</b> ${esc(p.process_text||(`${fmtNumber(p.process_nm)}nm`))} · ${esc(technologyFamily({performance:p,title:item.title,technology_family:item.technology_family}))}</span>`);
+    if(p.channel_loss_db!=null)values.push(`<span class="metric"><b>Loss</b> ${fmtNumber(p.channel_loss_db)} dB${p.loss_frequency_ghz!=null?` @ ${fmtNumber(p.loss_frequency_ghz)} GHz`:""}</span>`);
+    if(p.ber!=null)values.push(`<span class="metric"><b>BER</b> ${Number(p.ber).toExponential(1)}${p.ber_scope&&p.ber_scope!=="unknown"?` · ${esc(SerdesLabels.berScope(p.ber_scope))}`:""}</span>`);
+    const status=p.review_status==="verified"?"Verified":p.review_status==="curated_reference"?"Curated":"Auto";
+    values.push(`<span class="metric-source"><span class="provenance ${esc(p.source_kind)}">${esc(p.source_label)} · ${esc(p.evidence_tier||status)}</span></span>`);
+    return values.join("");
+  }
+  const rates=item.taxonomy?.rates||[],energy=item.taxonomy?.energy||[];
+  return [...rates.map(x=>`<span class="metric"><b>Title rate</b> ${esc(x)}</span>`),...energy.map(x=>`<span class="metric"><b>Title energy</b> ${esc(x)}</span>`)].join("")||'<span class="metric">구조화된 수치 없음</span>';
+}
+
+function completenessHtml(item){
+  const c=item.completeness||{},labels={rate:"R",energy:"E",process:"P",loss:"L"},chips=Object.entries(labels).map(([field,label])=>{const value=Number(c[field]||0),symbol=value===2?"✓":value===1?"~":"–",className=value===2?"structured":value===1?"title-only":"";return `<span class="complete-chip ${className}" title="${esc(field)}: ${value===2?"structured":value===1?"title clue only":"missing"}">${label}${symbol}</span>`});
+  chips.push(`<span class="complete-chip ${c.abstract?"available":""}" title="Abstract ${c.abstract?"available":"missing"}">A${c.abstract?"✓":"–"}</span>`);
+  chips.push(`<span class="complete-chip ${c.pdf?"available":""}" title="PDF ${c.pdf?"available":"missing"}">PDF${c.pdf?"✓":"–"}</span>`);
+  if(c.same_point_fom_ready)chips.push('<span class="fom-ready-chip" title="동일 measurement에 Rate + Energy + Process + 비교 가능한 energy scope가 있습니다.">FoM ready</span>');
+  return `<div class="completeness" aria-label="성능 데이터 완전성">${chips.join("")}</div>`;
+}
+
+function rowHtml(item){
+  const external=safeUrl(item.url);
+  const metrics=metricHtml(item);
+  const hasCitation=item.citation_count!==null&&item.citation_count!==undefined&&item.citation_count!=="";
+  const citationCount=hasCitation&&Number.isFinite(Number(item.citation_count))?Number(item.citation_count):null;
+  const citationText=citationCount===null?"인용 미집계":`인용 ${citationCount.toLocaleString()}`;
+  const citationSource=citationCount===null?"":SerdesLabels.citationSource(item.citation_source);
+  const citationDate=item.citation_updated_at?new Date(item.citation_updated_at):null;
+  const citationTooltip=citationCount===null?"인용 메타데이터가 아직 확보되지 않았습니다. 0회를 뜻하지 않습니다.":`${citationSource} 집계${citationDate&&!isNaN(citationDate)?` · 확인 ${citationDate.toLocaleDateString('ko-KR')}`:""}. 출처마다 집계 범위가 다릅니다.`;
+  const citationClass=`citation-count${state.sort==="citations"?" active":""}${citationCount===null?" missing":""}`;
+  const original=external?`<a href="${esc(external)}" target="_blank" rel="noopener">원문 ↗</a>`:"";
+  const pdf=item.pdf_available?`<button class="pdf" data-action="pdf" data-article="${esc(item.article_number)}" data-title="${esc(item.title)}">PDF</button>`:"";
+  const evidence=item.performance?.evidence_count?`<button data-action="evidence" data-article="${esc(item.article_number)}">근거 ${Number(item.performance.evidence_count).toLocaleString()}</button>`:"";
+  const star=`<button class="star ${item.is_favorite?'on':''}" data-action="favorite" data-article="${esc(item.article_number)}" title="${CAN_EDIT_FAVORITES?'즐겨찾기 변경':'즐겨찾기 읽기 전용'}" ${CAN_EDIT_FAVORITES?'':'disabled'}>${item.is_favorite?'★':'☆'}</button>`;
+  const screening=item.screening,screeningLabels={core:"Core SerDes",adjacent:"Adjacent I/O",needs_review:"Review",out_of_scope:"Noise"};
+  const screeningTag=screening?`<span class="tag screening ${esc(screening.relevance_class)}" title="${esc(screening.rationale||'')}">${esc(screeningLabels[screening.relevance_class]||screening.relevance_class)} · ${Math.round(Number(screening.relevance_score)||0)}</span>`:"";
+  return `<article class="paper-row"><div class="year-cell"><div class="year">${esc(item.year||'—')}</div><span class="${citationClass}" title="${esc(citationTooltip)}">${esc(citationText)}</span>${citationSource?`<small class="citation-provider">${esc(citationSource)}</small>`:""}</div><div><h3 class="paper-title">${esc(item.title)}</h3><div class="authors" title="${esc(item.authors||'저자 메타데이터 미확보')}">${esc(item.authors||'저자 메타데이터 미확보')}</div>${completenessHtml(item)}</div><div class="tags">${screeningTag}${mediumBadge(item)}${tagHtml(item.taxonomy)}</div><div class="venue"><b>${esc(item.source_name||'—')}</b><span>${esc(item.source_type||'')} · ${esc((item.source_system||'').toUpperCase())}</span></div><div class="metrics">${metrics}</div><div class="paper-actions">${star}${evidence}${original}${pdf}${surveySelectHtml(item)}</div><div id="evidence-${esc(item.article_number)}" class="evidence-box" hidden></div></article>`;
+}
+
+function renderPager(data){
+  const pager=$("pager");if(data.pages<=1){pager.innerHTML="";return}
+  const buttons=[];
+  const add=(label,page,active=false,disabled=false)=>buttons.push(`<button data-page="${page}" class="${active?'active':''}" ${disabled?'disabled':''}>${label}</button>`);
+  add("‹",Math.max(1,data.page-1),false,data.page<=1);
+  const visiblePages=Math.min(10,data.pages);
+  const start=Math.max(1,Math.min(data.page-Math.floor((visiblePages-1)/2),data.pages-visiblePages+1)),end=start+visiblePages-1;
+  for(let p=start;p<=end;p++)add(p,p,p===data.page);
+  add("›",Math.min(data.pages,data.page+1),false,data.page>=data.pages);
+  buttons.push(`<span>${data.page} / ${data.pages}</span>`);pager.innerHTML=buttons.join("");
+}
+
+async function loadPapers(){
+  $("result-info").textContent="논문을 불러오는 중…";$("paper-list").innerHTML='<div class="empty loading">SQL 저장소를 조회하고 있습니다.</div>';
+  try{
+    const data=await fetchJson(API+"/api/serdes/papers?"+queryString());
+    const first=data.total?(data.page-1)*data.size+1:0;const last=Math.min(data.page*data.size,data.total);
+    $("result-info").innerHTML=`총 <b>${Number(data.total).toLocaleString()}</b>편 중 ${first.toLocaleString()}–${last.toLocaleString()}`;
+    $("paper-list").innerHTML=data.items.length?data.items.map(rowHtml).join(""):'<div class="empty">조건에 맞는 SerDes 후보 논문이 없습니다.</div>';
+    renderPager(data);window.SurveyAI?.syncSelection();
+  }catch(error){if(error.message!=="auth"){$("result-info").textContent="조회 실패";$("paper-list").innerHTML='<div class="empty">데이터를 불러오지 못했습니다. 서버 연결을 확인해 주세요.</div>'}}
+}
+
+function applyFilters(){
+  state.q=$("f-q").value.trim();state.year_from=$("f-from").value;state.year_to=$("f-to").value;
+  state.source=$("f-source").value;state.signal=$("f-signal").value;
+  state.block=$("f-block").value;state.medium=$("f-medium").value;state.subtype=$("f-subtype").value;state.evidence_tier=$("f-evidence").value;state.screening=$("f-screening").value;state.sort=$("f-sort").value;state.pdf_only=$("f-pdf").checked;state.page=1;loadPapers();
+}
+let debounce;
+$("f-q").addEventListener("input",()=>{clearTimeout(debounce);debounce=setTimeout(applyFilters,320)});
+["f-from","f-to","f-source","f-signal","f-block","f-medium","f-subtype","f-evidence","f-sort","f-pdf"].forEach(id=>$(id).addEventListener("change",applyFilters));
+$("f-screening").addEventListener("change",()=>{if($("f-screening").value&&$("f-sort").value==="newest")$("f-sort").value="relevance";applyFilters()});
+$("btn-reset").addEventListener("click",()=>{
+  ["f-q","f-from","f-to","f-source","f-signal","f-block","f-medium","f-subtype","f-evidence"].forEach(id=>$(id).value="");$("f-screening").value="included";$("f-sort").value="newest";$("f-pdf").checked=false;applyFilters();
+});
+$("pager").addEventListener("click",event=>{const button=event.target.closest("button[data-page]");if(!button)return;state.page=Number(button.dataset.page);loadPapers();$("papers").scrollIntoView({behavior:"smooth"})});
+
+function closePdf(){$("pdf-panel").classList.remove("open");$("scrim").classList.remove("open");$("pdf-panel").setAttribute("aria-hidden","true");$("pdf-frame").src="about:blank"}
+function openPdf(article,title){const url=API+"/pdf/"+encodeURIComponent(article);$("pdf-title").textContent=title;$("pdf-newtab").href=url;$("pdf-frame").src=url;$("pdf-panel").classList.add("open");$("scrim").classList.add("open");$("pdf-panel").setAttribute("aria-hidden","false")}
+$("pdf-close").addEventListener("click",closePdf);$("scrim").addEventListener("click",closePdf);document.addEventListener("keydown",event=>{if(event.key==="Escape")closePdf()});
+
+async function toggleFavorite(button){
+  if(!CAN_EDIT_FAVORITES)return;
+  const response=await fetchJson(API+"/api/favorite",{method:"POST",headers:{"Content-Type":"application/json","X-CSRF-Token":CSRF_TOKEN},body:JSON.stringify({article_number:button.dataset.article})});
+  const on=response.is_favorite===1;button.classList.toggle("on",on);button.textContent=on?"★":"☆";
+}
+async function toggleEvidence(button){
+  const box=$("evidence-"+button.dataset.article);if(!box)return;
+  if(box.dataset.loaded){box.hidden=!box.hidden;return}
+  box.hidden=false;box.innerHTML='<span class="evidence-empty">근거를 불러오는 중…</span>';
+  try{const data=await fetchJson(API+"/api/serdes/papers/"+encodeURIComponent(button.dataset.article)+"/evidence");const rows=data.evidence||[];box.innerHTML=rows.length?`<div class="evidence-list">${rows.slice(0,16).map(row=>{const url=safeUrl(row.source_url),source=url?`<a href="${esc(url)}" target="_blank" rel="noopener">${esc(row.source_label)} ↗</a>`:esc(row.source_label);return `<div class="evidence-item"><b>${esc(row.field)}</b> · ${source} · ${esc(row.locator||"")}<br>${esc(row.text)}</div>`}).join("")}</div>`:'<span class="evidence-empty">이 논문에 연결된 근거 문장이 없습니다.</span>';box.dataset.loaded="1"}catch(error){if(error.message!=="auth")box.innerHTML='<span class="evidence-empty">근거를 불러오지 못했습니다.</span>'}
+}
+$("paper-list").addEventListener("click",event=>{const button=event.target.closest("[data-action]");if(!button)return;if(button.dataset.action==="pdf")openPdf(button.dataset.article,button.dataset.title);if(button.dataset.action==="favorite")toggleFavorite(button);if(button.dataset.action==="evidence")toggleEvidence(button)});
+
+(async()=>{calculatePower();try{await Promise.all([loadMeta(),loadPerformance()]);await loadPapers()}catch(error){if(error.message!=="auth"){$("paper-list").innerHTML='<div class="empty">서베이를 초기화하지 못했습니다.</div>'}}})();
+</script>
+{% if survey_ai_visible %}<script src="{{ url_for('static', filename='serdes_ai.js') }}"></script>{% endif %}
+</body>
+</html>
