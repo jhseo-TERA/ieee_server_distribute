@@ -1,0 +1,14 @@
+{
+  "katex": {
+    "version": "0.19.1",
+    "license": "MIT",
+    "integrity": "sha512-jG8uKntjSEcm2EpQOh0XturpPuuC9r3Sq5HLHdsFdWZT27E672SF19QEi+of0/YeOy15lDgRhKvr5614uRrEfA==",
+    "source": "https://registry.npmjs.org/katex/-/katex-0.19.1.tgz"
+  },
+  "markdown-it": {
+    "version": "15.0.3",
+    "license": "MIT",
+    "integrity": "sha512-+Az7Ojz3iRGu8KYMvJ6xVhvrxP3eE+vEtJX75Ow88XBpcQNV/0lGX5ZynIIBftREo4DC2jsveAMDaeltmm8QvQ==",
+    "source": "https://registry.npmjs.org/markdown-it/-/markdown-it-15.0.3.tgz"
+  }
+}

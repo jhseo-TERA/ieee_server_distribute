@@ -22,21 +22,22 @@ from pathlib import Path
 import requests
 from dotenv import load_dotenv
 
-from sync_zotero_favorites import (
-    DEFAULT_COLLECTION,
-    PAPER_TYPES,
-    REPORT_DIR,
-    ROOT,
-    ZoteroClient,
-    extract_article_number,
-    fetch_db_favorites,
-    item_key,
-    resolve_collection_key,
-    write_json,
-)
+try:
+    from .sync_zotero_favorites import (
+        DEFAULT_COLLECTION, PAPER_TYPES, REPORT_DIR, ROOT, ZoteroClient,
+        extract_article_number, fetch_db_favorites, item_key,
+        resolve_collection_key, write_json,
+    )
+except ImportError:
+    from sync_zotero_favorites import (
+        DEFAULT_COLLECTION, PAPER_TYPES, REPORT_DIR, ROOT, ZoteroClient,
+        extract_article_number, fetch_db_favorites, item_key,
+        resolve_collection_key, write_json,
+    )
 
 
 PENDING_TAG = "PaperServerPendingUpload"
+LINKED_TAG = "PaperServerLinkedPDF"
 
 load_dotenv(ROOT / ".env")
 
@@ -80,6 +81,8 @@ def attachment_plan(
     db_items: dict[str, dict],
     all_items: list[dict],
     collection_key: str,
+    *,
+    ensure_local_links: bool = False,
 ) -> tuple[list[dict], list[str]]:
     parents = top_items_by_article(all_items)
     children = pdf_children(all_items)
@@ -97,6 +100,20 @@ def attachment_plan(
         parent_key = item_key(parent)
         existing = children.get(parent_key, [])
         complete = [item for item in existing if not has_tag(item, PENDING_TAG)]
+        if ensure_local_links:
+            destination = os.path.normcase(str(Path(row["absolute_pdf_path"]).resolve()))
+            complete = [
+                item for item in complete
+                if item["data"].get("linkMode") == "linked_file"
+                and (
+                    os.path.normcase(os.path.normpath(item["data"].get("path") or ""))
+                    == destination
+                    or (
+                        has_tag(item, LINKED_TAG)
+                        and not (item["data"].get("path") or "").startswith("attachments:")
+                    )
+                )
+            ]
         if complete:
             continue
         pending = next((item for item in existing if has_tag(item, PENDING_TAG)), None)
@@ -109,6 +126,47 @@ def attachment_plan(
             }
         )
     return plan, unsafe
+
+
+def linked_path_updates(
+    db_items: dict[str, dict],
+    all_items: list[dict],
+    collection_key: str,
+) -> list[dict]:
+    """Repair our absolute file links after the Paper Server folder moves.
+
+    Keep attachment keys (and their annotations), user-created attachments,
+    stored files, and Zotero base-directory-relative paths intact.
+    """
+    parents = top_items_by_article(all_items)
+    children = pdf_children(all_items)
+    updates = []
+    for article_number, row in db_items.items():
+        matches = [
+            item for item in parents.get(article_number, [])
+            if collection_key in item.get("data", {}).get("collections", [])
+        ]
+        destination = Path(row["absolute_pdf_path"]).resolve()
+        if len(matches) != 1 or not destination.is_file():
+            continue
+        for attachment in children.get(item_key(matches[0]), []):
+            data = attachment["data"]
+            path = data.get("path") or ""
+            if (
+                data.get("linkMode") != "linked_file"
+                or not has_tag(attachment, LINKED_TAG)
+                or has_tag(attachment, PENDING_TAG)
+                or path.startswith("attachments:")
+            ):
+                continue
+            if os.path.normcase(os.path.normpath(path)) == os.path.normcase(
+                str(destination)
+            ):
+                continue
+            updated = copy.deepcopy(data)
+            updated["path"] = str(destination)
+            updates.append(updated)
+    return updates
 
 
 def create_pending_attachment(
@@ -264,7 +322,7 @@ def create_linked_file_objects(
                 "contentType": "application/pdf",
                 "charset": "",
                 "path": str(pdf_path),
-                "tags": [{"tag": "PaperServerLinkedPDF"}],
+                "tags": [{"tag": LINKED_TAG}],
             }
         )
         linked.append(attachment)
@@ -283,12 +341,19 @@ def main() -> int:
         help="linked: keep files in Paper Server; stored: upload to Zotero storage",
     )
     parser.add_argument(
+        "--ensure-local-links",
+        action="store_true",
+        help="also add a local PDF link when only stored or foreign-path attachments exist",
+    )
+    parser.add_argument(
         "--limit",
         type=int,
         default=None,
         help="maximum attachments for this invocation",
     )
     args = parser.parse_args()
+    if args.ensure_local_links and args.mode != "linked":
+        raise SystemExit("--ensure-local-links requires --mode linked")
     if args.limit is not None and args.limit < 1:
         raise SystemExit("--limit must be at least 1")
 
@@ -304,15 +369,24 @@ def main() -> int:
     )
     db_items = fetch_db_favorites()
     all_items = client.fetch_all_items()
-    plan, unsafe = attachment_plan(db_items, all_items, collection_key)
+    plan, unsafe = attachment_plan(
+        db_items, all_items, collection_key,
+        ensure_local_links=args.ensure_local_links,
+    )
     if unsafe:
         raise SystemExit(
             f"[safety stop] {len(unsafe)} DB items do not have exactly one "
             "parent in the target collection"
         )
     full_plan_count = len(plan)
+    path_updates = (
+        linked_path_updates(db_items, all_items, collection_key)
+        if args.mode == "linked" else []
+    )
+    full_path_update_count = len(path_updates)
     if args.limit is not None:
-        plan = plan[:args.limit]
+        path_updates = path_updates[:args.limit]
+        plan = plan[:max(0, args.limit - len(path_updates))]
 
     total_bytes = sum(Path(item["pdf_path"]).stat().st_size for item in plan)
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -323,23 +397,27 @@ def main() -> int:
             "created_at": datetime.now().astimezone().isoformat(timespec="seconds"),
             "mode": "apply" if args.apply else "dry-run",
             "attachment_mode": args.mode,
+            "ensure_local_links": args.ensure_local_links,
             "collection": DEFAULT_COLLECTION,
             "collection_key": collection_key,
             "db_file_backed_items": len(db_items),
             "full_attachment_actions": full_plan_count,
             "attachment_actions": len(plan),
+            "full_linked_path_updates": full_path_update_count,
+            "linked_path_updates": path_updates,
             "total_bytes": total_bytes,
             "items": plan,
         },
     )
     print(f"DB file-backed items: {len(db_items)}")
     print(f"PDF attachment actions: {len(plan)}")
+    print(f"Linked PDF path repairs: {len(path_updates)}")
     print(f"Upload bytes: {total_bytes:,}")
     print(f"plan: {report_path}")
     if not args.apply:
         print("[DRY-RUN] Zotero was not changed.")
         return 0
-    if not plan:
+    if not plan and not path_updates:
         print("[OK] Every file-backed Zotero parent already has a PDF attachment.")
         return 0
 
@@ -349,14 +427,25 @@ def main() -> int:
         {
             "created_at": datetime.now().astimezone().isoformat(timespec="seconds"),
             "target_items": plan,
+            "linked_path_updates": path_updates,
             "zotero_items_before": all_items,
         },
     )
     print(f"backup: {backup_path}")
 
     completed = 0
+    repaired = 0
     if args.mode == "linked":
-        cleanup, linked = create_linked_file_objects(client, plan, all_items)
+        repaired = client.write_objects(path_updates, batch_size=50)
+        if repaired != len(path_updates):
+            raise RuntimeError(
+                f"Linked path repair count mismatch: {repaired}/{len(path_updates)}"
+            )
+        print(f"[linked] repaired {repaired} PDF paths", flush=True)
+        cleanup, linked = (
+            create_linked_file_objects(client, plan, all_items)
+            if plan else ([], [])
+        )
         if cleanup:
             removed = client.write_objects(cleanup, batch_size=50)
             print(f"[cleanup] incomplete stored attachments moved to trash: {removed}")
@@ -386,8 +475,30 @@ def main() -> int:
 
     verify_items = client.fetch_all_items()
     remaining, unsafe_after = attachment_plan(
-        db_items, verify_items, collection_key
+        db_items, verify_items, collection_key,
+        ensure_local_links=args.ensure_local_links,
     )
+    remaining_path_updates = (
+        linked_path_updates(db_items, verify_items, collection_key)
+        if args.mode == "linked" else []
+    )
+    local_links = {
+        (data["parentItem"], os.path.normcase(os.path.normpath(data["path"])))
+        for item in verify_items
+        if (data := item.get("data", {})).get("linkMode") == "linked_file"
+        and data.get("parentItem") and data.get("path") and not data.get("deleted")
+        and data.get("contentType") == "application/pdf"
+    }
+    verified_parents = top_items_by_article(verify_items)
+    missing_local_links = [
+        article for article, row in db_items.items()
+        if not any(
+            collection_key in parent.get("data", {}).get("collections", [])
+            and (item_key(parent), os.path.normcase(str(Path(row["absolute_pdf_path"]).resolve())))
+            in local_links
+            for parent in verified_parents.get(article, [])
+        )
+    ]
     verify_path = REPORT_DIR / f"zotero_pdf_sync_verify_{stamp}.json"
     write_json(
         verify_path,
@@ -398,10 +509,20 @@ def main() -> int:
             "expected_remaining": max(0, full_plan_count - completed),
             "unsafe": unsafe_after,
             "remaining_items": remaining,
+            "path_repairs_completed": repaired,
+            "remaining_path_repairs": len(remaining_path_updates),
+            "expected_remaining_path_repairs": full_path_update_count - repaired,
+            "db_items_with_local_pdf_link": len(db_items) - len(missing_local_links),
+            "missing_local_pdf_links": missing_local_links,
         },
     )
     print(f"verify: {verify_path}")
-    if unsafe_after or len(remaining) != max(0, full_plan_count - completed):
+    print(f"Local PDF links: {len(db_items) - len(missing_local_links)}/{len(db_items)}")
+    if (
+        unsafe_after
+        or len(remaining) != max(0, full_plan_count - completed)
+        or len(remaining_path_updates) != full_path_update_count - repaired
+    ):
         return 1
     return 0
 

@@ -9,8 +9,8 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from scripts.preview_recommendation_ai import PreviewService, PreviewWorker
-from local_ai_recommendations import MODEL, select_mode
-from recommendation_policy import allocate
+from paper_server.ai.recommendations import MODEL, select_mode
+from paper_server.recommendation.policy import allocate
 import web.app as app
 
 
@@ -32,7 +32,7 @@ def main():
     start = time.monotonic()
     before = service.snapshot()
     try:
-        with patch('local_ai_recommendations.MAX_CANDIDATES', 16):
+        with patch('paper_server.ai.recommendations.MAX_CANDIDATES', 16):
             snap = service.snapshot()
             result = service.run('grounding-preview', {'signature':snap['signature'], 'model':MODEL}, threading.Event())
         after = service.snapshot()

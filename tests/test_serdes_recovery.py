@@ -7,7 +7,7 @@ from scripts.reconcile_recovered_pdf_bundle import (
     source_type_from_metadata,
 )
 from scripts.serdes_data_pipeline import fetch_serdes_papers, SERDES_LATEST_COMPLETE_RUNS_SQL
-from serdes_metrics import extract_performance
+from paper_server.serdes.metrics import extract_performance
 
 
 class SerdesRecoveryTests(unittest.TestCase):

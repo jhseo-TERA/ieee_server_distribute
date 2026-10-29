@@ -11,7 +11,7 @@ from PIL import Image,ImageDraw,ImageFont
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT));sys.path.append(str(ROOT/'.venv/Lib/site-packages'))
 import pypdfium2 as pdfium
-from serdes_figures import FigureStore,render_crop
+from paper_server.serdes.figures import FigureStore,render_crop
 OUT=ROOT/'outputs/serdes_figure_remaining_20260915'
 
 def save(path,data):path.write_text(json.dumps(data,ensure_ascii=False,indent=2),encoding='utf-8')

@@ -3,7 +3,7 @@ import unittest
 
 import scripts.serdes_data_pipeline as pipeline_module
 
-from serdes_enrichment import (
+from paper_server.serdes.enrichment import (
     ENERGY_COMPONENT_SCOPE_VERSION,
     LINK_SUBTYPE_VERSION,
     classify_energy_component_scope,

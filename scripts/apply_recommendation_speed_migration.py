@@ -9,8 +9,8 @@ from sqlalchemy import text
 from web.app import engine
 from scripts.apply_recommendation_migration import snapshot
 from scripts.preview_recommendation_ai import PreviewWorker
-from local_ai_recommendations import MODEL
-from recommendation_pair_cache import PairCache, pair_key, pair_input, validated_pairs
+from paper_server.ai.recommendations import MODEL
+from paper_server.recommendation.pair_cache import PairCache, pair_key, pair_input, validated_pairs
 
 
 def main():

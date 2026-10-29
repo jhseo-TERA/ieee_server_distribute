@@ -6,7 +6,7 @@ import sys
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
-from serdes_figures import FigureStore
+from paper_server.serdes.figures import FigureStore
 
 def main():
     store=FigureStore(ROOT)

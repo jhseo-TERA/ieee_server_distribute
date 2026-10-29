@@ -7,7 +7,7 @@ import pypdfium2 as pdfium
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from serdes_figures import scan_document
+from paper_server.serdes.figures import scan_document
 
 
 def main():

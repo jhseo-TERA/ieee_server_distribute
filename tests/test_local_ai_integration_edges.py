@@ -4,7 +4,7 @@ import threading
 import unittest
 from unittest.mock import Mock
 
-from local_ai_service import LocalAIService, validate_job
+from paper_server.ai.service import LocalAIService, validate_job
 
 
 class LocalAiIntegrationEdgeTests(unittest.TestCase):

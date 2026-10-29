@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 import web.app as app_module
-from local_ai_service import validate_job
+from paper_server.ai.service import validate_job
 
 
 class LocalAIRouteTests(unittest.TestCase):

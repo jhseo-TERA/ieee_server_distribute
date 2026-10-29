@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>오늘의 2편 · 개인 리뷰</title>
+  <script src="{{ url_for('static',filename='account_presence.js') }}" data-csrf="{{ csrf_token }}" defer></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='daily_review.css') }}">
+  <script src="{{ url_for('static', filename='daily_review.js') }}" defer></script>
+</head>
+<body data-can-write-reviews="{{ 'true' if can_write_reviews else 'false' }}" data-obsidian-enabled="{{ 'true' if obsidian_enabled else 'false' }}">
+  <header class="site-header">
+    <a class="brand" href="/">Paper Repository <span>/ 개인 리뷰</span></a>
+    <nav aria-label="주요 메뉴"><a href="/">논문 저장소</a><a href="/serdes">SerDes Survey</a><a href="/connection">Connection 지도</a><a href="/daily-review" aria-current="page">오늘의 2편</a></nav>
+    <span class="username">{{ username }}</span>
+    {% if username == 'admin' %}<a href="/account/activity">계정 로그인 현황</a>{% endif %}
+  </header>
+  <main>
+    <div class="intro">
+      <div><p class="eyebrow">DAILY READING · PERSONAL NOTES</p><h1>오늘은 이 두 편을 읽어볼까요?</h1><p class="intro-copy">내 즐겨찾기에서 하루 2편을 랜덤으로 고릅니다.<br>완료로 저장하기 전까지는 다음 날에도 다시 추천될 수 있습니다.</p></div>
+      <div class="day-summary"><span id="review-date">오늘의 읽기</span><strong id="today-progress">– <small>/ 2편 완료</small></strong><span id="remaining-count">추천 후보를 확인하고 있습니다.</span></div>
+    </div>
+    <div class="day-note"><span>한국 시간 자정 기준 · 오늘의 선택은 하루 동안 유지됩니다.</span><span>리뷰와 완료 상태는 내 계정에만 저장됩니다.</span></div>
+    {% if not can_write_reviews %}<p class="notice">개인 리뷰 작성·수정은 <strong>admin</strong> 계정에서만 가능합니다.</p>{% elif obsidian_enabled %}<p class="notice">그림·수식·텍스트는 Obsidian에서 편집하세요. 처음 열 때만 노트를 만들며, 이후에는 기존 내용을 그대로 엽니다.</p>{% elif can_write_reviews %}<p class="notice">Obsidian 보관함 경로를 설정하면 논문별 리뷰 노트를 열 수 있습니다.</p>{% endif %}
+    <div id="rollover" class="notice" hidden><span>새로운 날짜가 되었습니다. 완료 상태 변경을 저장한 뒤 오늘의 추천을 확인하세요.</span> <button id="reload-day" type="button">오늘의 추천 확인</button></div>
+    <div id="page-status" class="notice" role="status" aria-live="polite">추천을 불러오는 중…</div>
+    <button id="retry-today" class="button secondary" type="button" hidden>다시 불러오기</button>
+    <section id="today-papers" class="today-grid" aria-label="오늘 추천한 논문"></section>
+    <section class="history" aria-labelledby="history-title">
+      <div class="section-heading"><div><p class="eyebrow">MY READING LOG</p><h2 id="history-title">추천 기록과 리뷰</h2><p>지난 추천에서도 Obsidian 노트를 열고 완료 상태를 관리할 수 있습니다.</p></div><button id="refresh-history" class="button secondary" type="button">기록 새로고침</button></div>
+      <p id="history-status" role="status" aria-live="polite"></p>
+      <div id="history-list" class="history-list"></div>
+      <div class="pagination"><button id="history-prev" class="button secondary" type="button" disabled>이전</button><span id="history-page">1 / 1</span><button id="history-next" class="button secondary" type="button" disabled>다음</button></div>
+    </section>
+  </main>
+  <dialog id="review-dialog" aria-labelledby="dialog-title"><div class="dialog-heading"><h2 id="dialog-title">지난 논문 리뷰</h2><button id="close-dialog" class="button secondary" type="button">닫기</button></div><div id="dialog-paper"></div></dialog>
+  <template id="paper-template">
+    <article class="paper-card">
+      <div class="card-top"><span class="paper-label"></span><span class="status-badge"></span></div>
+      <h2 class="paper-title"></h2><p class="paper-meta"></p><p class="paper-authors"></p>
+      <div class="paper-links"></div>
+      <form class="review-form">
+        {% if can_write_reviews %}<div class="note-actions"><button class="button primary prepare-note" type="button"{% if not obsidian_enabled %} disabled{% endif %}>Obsidian에서 리뷰하기</button><a class="button primary open-note" hidden>Obsidian에서 리뷰하기 ↗</a></div><p class="note-status" role="status" aria-live="polite"></p><p class="tool-help">그림 붙여넣기·LaTeX 수식·리뷰 본문은 Obsidian에서 자유롭게 편집하세요.</p>{% endif %}
+        <details class="legacy-review" hidden><summary>이전에 웹에 저장한 메모</summary><pre class="legacy-notes"></pre></details>
+        <div class="review-options"><label class="completed-option"><input type="checkbox" name="completed">리뷰 완료 · 다음 추천에서 제외</label></div>
+        <div class="save-row"><button class="button secondary" type="submit"{% if not can_write_reviews %} hidden disabled{% endif %}>완료 상태 저장</button><span class="save-status" role="status" aria-live="polite"></span></div>
+      </form>
+    </article>
+  </template>
+  <noscript>일일 추천과 리뷰 저장에는 JavaScript가 필요합니다.</noscript>
+</body>
+</html>

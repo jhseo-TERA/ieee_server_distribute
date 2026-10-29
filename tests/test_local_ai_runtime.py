@@ -5,7 +5,7 @@ import time
 import unittest
 from unittest.mock import patch
 
-from local_ai_runtime import (
+from paper_server.ai.runtime import (
     ALLOWED_MODELS, OllamaCancelled, OllamaClient, OllamaError, OllamaTimeout,
     parse_json_output,
 )

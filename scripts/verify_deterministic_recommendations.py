@@ -11,7 +11,7 @@ sys.path.insert(0, str(ROOT))
 import requests
 from sqlalchemy import text
 from web.app import app, ADMIN_USERNAME, AUTH_ACCOUNTS, engine
-from recommendation_policy import TOTAL_RECOMMENDATIONS, excluded_electrical_multicarrier
+from paper_server.recommendation.policy import TOTAL_RECOMMENDATIONS, excluded_electrical_multicarrier
 from scripts.apply_recommendation_migration import snapshot
 
 BASE = 'http://127.0.0.1:5001'

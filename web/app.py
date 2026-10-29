@@ -12,7 +12,9 @@ IEEE Paper Repository - Flask 서버
 실행:  .venv/Scripts/python.exe web/app.py
 """
 import hashlib
+import math
 import os
+from pathlib import Path
 import re
 import secrets
 import sys
@@ -44,18 +46,20 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from serdes_metrics import (  # noqa: E402
+from paper_server.serdes.metrics import (  # noqa: E402
     SERDES_SQL_PATTERN,
     canonical_ieee_url,
     classify_link_medium,
     taxonomy as extract_serdes_taxonomy,
 )
-from serdes_fom import FOM_ENERGY_BASIS  # noqa: E402
-from account_store import AccountStore, current_account_id, favorite_sql  # noqa: E402
-from serdes_enrichment import evidence_tier, pareto_frontier_ids  # noqa: E402
-from recommendation_policy import (FavoriteSimilarity, MIN_SIMILARITY, TOTAL_RECOMMENDATIONS,
+from paper_server.serdes.fom import FOM_ENERGY_BASIS  # noqa: E402
+from paper_server.accounts import AccountStore, current_account_id, favorite_sql  # noqa: E402
+from paper_server.serdes.enrichment import evidence_tier, pareto_frontier_ids  # noqa: E402
+from paper_server.ai.documents import DocumentError, DocumentStore  # noqa: E402
+from paper_server.serdes.mineru import latest_cached_mineru_report, NUMERIC_FIELDS  # noqa: E402
+from paper_server.recommendation.policy import (FavoriteSimilarity, MIN_SIMILARITY, TOTAL_RECOMMENDATIONS,
                                    allocate, weighted_profile, excluded_electrical_multicarrier,
-                                   classify_interest_topic)  # noqa: E402
+                                   classify_interest_topic, expanded_search_terms)  # noqa: E402
 
 IEEE_PDF_DIR = os.path.join(ROOT, "ieee-pdf")      # IEEE(숫자 키) PDF
 OPTICA_PDF_DIR = os.path.join(ROOT, "optica-pdf")  # Optica(uri 키) PDF
@@ -76,6 +80,9 @@ engine = create_engine(DB_URL, pool_pre_ping=True, pool_recycle=3600)
 
 app = Flask(__name__)
 app.config['ACCOUNT_AUTH_ENABLED'] = os.getenv('ACCOUNT_AUTH_ENABLED', '1') == '1'
+app.config['OBSIDIAN_VAULT_PATH'] = os.getenv('OBSIDIAN_VAULT_PATH', '').strip()
+app.config['ACCOUNT_ACTIVITY_ENABLED'] = os.getenv('ACCOUNT_ACTIVITY_ENABLED', '1') == '1'
+app.config['REVIEW_MEDIA_DIR'] = os.getenv('REVIEW_MEDIA_DIR', '').strip()
 accounts = AccountStore(engine)
 AUTH_USERNAME = os.getenv("AUTH_USERNAME", "").strip()
 AUTH_PASSWORD_HASH = os.getenv("AUTH_PASSWORD_HASH", "").strip()
@@ -836,6 +843,8 @@ def login():
                 if app.config['ACCOUNT_AUTH_ENABLED']:
                     session['account_id'] = account['id']
                     session['session_version'] = account['session_version']
+                    session['activity_session_id'] = secrets.token_urlsafe(32)
+                    g.activity_login = True
                 session["csrf_token"] = secrets.token_urlsafe(32)
                 session.permanent = True
                 return redirect(url_for('account_password') if account.get('must_change_password')
@@ -850,6 +859,8 @@ def login():
 
 @app.route("/logout", methods=["POST"])
 def logout():
+    from paper_server.account_activity import capture_logout
+    capture_logout(app)
     session.clear()
     return redirect(url_for("login"))
 
@@ -896,6 +907,17 @@ def serdes_survey():
         can_edit_favorites=session.get("role") in {"admin", "member"},
         can_edit_shared=session.get('role') == 'admin',
         survey_ai_visible=SURVEY_AI_UI_ENABLED,
+        csrf_token=_csrf_token(),
+    )
+
+
+@app.route("/connection")
+def connection_map():
+    return render_template(
+        "connection.html",
+        username=session.get("username"),
+        role=session.get("role", "viewer"),
+        can_edit_favorites=session.get("role") in {"admin", "member"},
         csrf_token=_csrf_token(),
     )
 
@@ -1609,13 +1631,105 @@ def build_serdes_performance(args, strict=False):
     )
 
 
+def _serdes_structured_evidence(paper):
+    """Expose bounded, source-hash-checked MinerU evidence without running a parser.
+
+    Cached document content is untrusted. Allow-list public fields and keep local
+    paths, raw table HTML and parser internals out of the HTTP response.
+    """
+    base = {"parser": "MinerU", "review_status": "needs_review"}
+    try:
+        pdf_path = DocumentStore(ROOT).resolve_path(dict(paper))
+    except DocumentError:
+        return {**base, "status": "missing_pdf"}
+    try:
+        report = latest_cached_mineru_report(pdf_path, cache_root=Path(ROOT) / "outputs" / "serdes_mineru")
+    except (OSError, ValueError, TypeError):
+        report = None
+    if not isinstance(report, dict):
+        return {**base, "status": "not_prepared"}
+
+    def bounded_text(value, limit=240):
+        return value[:limit] if isinstance(value, str) else ""
+
+    def text_list(value, count=20, limit=240):
+        return [bounded_text(item, limit) for item in value[:count]
+                if isinstance(item, str)] if isinstance(value, list) else []
+
+    def number(value):
+        try:
+            return value if type(value) in (int, float) and math.isfinite(value) else None
+        except OverflowError:
+            return None
+
+    raw_candidates = report.get("candidates")
+    raw_candidates = raw_candidates if isinstance(raw_candidates, list) else []
+    candidates = []
+    for raw in raw_candidates[:128]:
+        if not isinstance(raw, dict):
+            continue
+        page = raw.get("page")
+        if type(page) is not int or not 1 <= page <= 10000:
+            continue
+        performance = raw.get("performance")
+        performance = performance if isinstance(performance, dict) else {}
+        raw_conditions = raw.get("conditions")
+        raw_conditions = raw_conditions if isinstance(raw_conditions, dict) else {}
+        candidate = dict(
+            candidate_id=bounded_text(raw.get("candidate_id"), 64),
+            page=page,
+            pdf_url=url_for("serve_pdf", article_number=paper["article_number"]) + f"#page={page}",
+            block_id=bounded_text(raw.get("block_id"), 64),
+            block_type=bounded_text(raw.get("block_type"), 32),
+            text=bounded_text(raw.get("text"), 2400),
+            caption=bounded_text(raw.get("caption"), 800),
+            footnotes=bounded_text(raw.get("footnotes"), 800),
+            attribution=bounded_text(raw.get("attribution"), 64),
+            performance={field: number(performance[field]) for field in NUMERIC_FIELDS
+                         if number(performance.get(field)) is not None},
+            conditions={key: text_list(raw_conditions.get(key), count=8)
+                        for key in ("modulation", "supply_voltage", "temperature", "fec",
+                                    "excluded_components", "measurement_type")
+                        if isinstance(raw_conditions.get(key), list)},
+            energy_component_scope=bounded_text(raw.get("energy_component_scope"), 64),
+            flags=text_list(raw.get("flags")),
+            review_status="needs_review",
+        )
+        for key in ("table_row", "table_column"):
+            if type(raw.get(key)) is int and 1 <= raw[key] <= 1000:
+                candidate[key] = raw[key]
+        candidates.append(candidate)
+
+    raw_conflicts = report.get("conflicts")
+    raw_conflicts = raw_conflicts if isinstance(raw_conflicts, list) else []
+    conflicts = []
+    for raw in raw_conflicts[:len(NUMERIC_FIELDS)]:
+        if not isinstance(raw, dict) or raw.get("field") not in NUMERIC_FIELDS:
+            continue
+        values = raw.get("values")
+        conflicts.append({"field": raw["field"], "values": [bounded_text(value, 64)
+                          for value in list(values)[:20]] if isinstance(values, dict) else []})
+    stats = report.get("stats") if isinstance(report.get("stats"), dict) else {}
+    producer = report.get("producer") if isinstance(report.get("producer"), dict) else {}
+    return {**base, "status": "available", "tier": bounded_text(report.get("tier"), 24),
+            "adapter_version": bounded_text(report.get("adapter_version"), 64),
+            "producer_version": bounded_text(producer.get("version"), 64),
+            "created_at": bounded_text(report.get("created_at"), 64),
+            "source_sha256": bounded_text(report.get("source_sha256"), 64),
+            "pages": number(stats.get("pages")), "blocks": number(stats.get("blocks")),
+            "candidate_count": len(raw_candidates), "shown_candidate_count": len(candidates),
+            "conflict_count": len(raw_conflicts), "candidates": candidates,
+            "conflicts": conflicts, "warnings": text_list(report.get("warnings"), count=40),
+            "limitations": text_list(report.get("limitations"), count=8)}
+
+
 @app.route("/api/serdes/papers/<article_number>/evidence")
 def api_serdes_evidence(article_number):
     if not SAFE_KEY_RE.fullmatch(article_number):
         abort(404)
     with engine.connect() as c:
         paper = c.execute(text(
-            "SELECT id, article_number, title, url, source_system FROM papers "
+            "SELECT id, article_number, title, url, source_system, pdf_local_path FROM papers "
             f"WHERE article_number=:article_number AND {_serdes_source_sql()}"
         ), {"article_number": article_number}).mappings().first()
         if not paper:
@@ -1630,7 +1744,11 @@ def api_serdes_evidence(article_number):
                 "JOIN serdes_measurements m ON m.implementation_id=ip.implementation_id "
                 "JOIN serdes_measurement_evidence e ON e.measurement_id=m.id "
                 "WHERE ip.paper_id=:paper_id "
-                "ORDER BY CASE e.source_kind "
+                "ORDER BY CASE e.review_status "
+                " WHEN 'verified' THEN 0 WHEN 'reviewed' THEN 0 "
+                " WHEN 'curated_reference' THEN 1 WHEN 'calculated' THEN 2 "
+                " WHEN 'rejected' THEN 9 WHEN 'invalid' THEN 9 ELSE 3 END, "
+                "CASE e.source_kind "
                 " WHEN 'manual' THEN 6 WHEN 'user_sheet' THEN 5 WHEN 'pdf' THEN 4 "
                 " WHEN 'reference_xlsx' THEN 3 WHEN 'abstract' THEN 2 ELSE 1 END DESC, "
                 "e.field_name, e.updated_at DESC LIMIT 80"
@@ -1645,6 +1763,8 @@ def api_serdes_evidence(article_number):
             continue
         seen.add(key)
         evidence.append(dict(
+            measurement_id=row["measurement_id"],
+            operating_point_key=row["operating_point_key"],
             field=row["field_name"],
             source_kind=row["source_kind"],
             source_label=SERDES_SOURCE_LABELS.get(row["source_kind"], row["source_kind"]),
@@ -1657,12 +1777,17 @@ def api_serdes_evidence(article_number):
             review_status=row["review_status"],
             updated_at=_json_scalar(row["updated_at"]),
         ))
-    return jsonify(dict(
+    response = jsonify(dict(
         article_number=article_number,
         title=paper["title"],
         url=_serdes_paper_url(article_number, paper.get("source_system"), paper.get("url")),
         evidence=evidence,
+        evidence_limit=80,
+        evidence_may_have_more=len(rows) >= 80,
+        structured_evidence=_serdes_structured_evidence(paper),
     ))
+    response.headers["Cache-Control"] = "private, no-store"
+    return response
 
 
 @app.route("/api/meta")
@@ -1685,12 +1810,13 @@ def api_meta():
             f"COUNT(CASE WHEN {favorite_sql()}=1 THEN 1 END) AS fav_total, "
             f"COUNT(CASE WHEN {favorite_sql()}=1 AND pdf_available=1 THEN 1 END) AS fav_pdf_total, "
             f"COUNT(CASE WHEN {favorite_sql()}=1 AND COALESCE(pdf_available,0)=0 THEN 1 END) AS fav_missing_pdf_total, "
-            f"COUNT(CASE WHEN COALESCE({favorite_sql()},0)=0 AND pdf_available=1 THEN 1 END) AS nonfav_pdf_total "
+            f"COUNT(CASE WHEN COALESCE({favorite_sql()},0)=0 AND pdf_available=1 THEN 1 END) AS nonfav_pdf_total, "
+            f"COUNT(CASE WHEN source_system='designcon' AND {favorite_sql()}=1 THEN 1 END) AS designcon_fav_total "
             "FROM papers"
         )).mappings().one()
     return jsonify(dict(
         years=years, sources=sources, publishers=publishers,
-        total=total, **dict(counts),
+        total=total, designcon_total=pub_counts.get('designcon', 0), **dict(counts),
         year_min=(min(years) if years else None),
         year_max=(max(years) if years else None),
     ))
@@ -1888,7 +2014,7 @@ def _rank_and_filter_candidates(rows, profile_terms, favorite_title_keys, limit,
         seen_titles.add(title_key)
 
         overlap = len(_title_terms(title) & profile_set)
-        if overlap < min(3, len(profile_set)):
+        if similarity is None and overlap < min(3, len(profile_set)):
             continue
         if similarity is not None:
             item.update(similarity.evidence(title))
@@ -1966,8 +2092,8 @@ def _search_source(
     if not global_terms or sub_limit <= 0:
         return []
 
-    global_query = " ".join(global_terms)
-    local_query = " ".join(local_terms)
+    global_query = " ".join(expanded_search_terms(global_terms))
+    local_query = " ".join(expanded_search_terms(local_terms))
     effective_terms = _merge_profile_terms(global_terms, local_terms, local_weight)
     pool_limit = min(500, max(50, sub_limit * 8))
 
@@ -2013,7 +2139,7 @@ def _search_source(
         f"AND LOWER(title) NOT LIKE 'author correction:%' "
         f"AND LOWER(title) NOT LIKE 'correction:%' "
         f"AND LOWER(title) NOT LIKE 'correction to:%' "
-        f"ORDER BY score DESC "
+        f"ORDER BY score DESC, article_number ASC "
         f"LIMIT :pool_limit"),
         params,
     ).mappings().all()
@@ -2054,13 +2180,9 @@ def _assemble_source_recommendations(
 
 
 def build_sql_recommendations(per_source=RECO_PER_SOURCE, candidate_pool=False):
-    """출처 영향 제한 + 개별 즐겨찾기 유사도로 전체 최대 180편을 고른다.
-
-    출처당 20편은 상한이며 최소 할당은 없다. candidate_pool은 AI 평가용
-    넓은 후보를 반환하지만 관련성·중복·명시적 제외 기준은 동일하다.
-    """
+    """전체 제목 색인에서 즐겨찾기별 후보를 모으고 표시 한도는 마지막에 적용한다."""
     rotation_date = datetime.now(RECO_TIMEZONE).date()
-    from recommendation_feedback import FeedbackStore
+    from paper_server.recommendation.feedback import FeedbackStore
     feedback = FeedbackStore(engine).read()
 
     with engine.connect() as c:
@@ -2091,15 +2213,11 @@ def build_sql_recommendations(per_source=RECO_PER_SOURCE, candidate_pool=False):
         if source_name in titles_by_source:
             titles_by_source[source_name].append(title)
 
-    all_titles = [row['title'] for row in fav_rows]
     favorite_topic_counts = Counter(
         classify_interest_topic(row) for row in fav_rows
         if not excluded_electrical_multicarrier(row)
     )
     global_profile = weighted_profile(fav_rows, _title_terms)
-    similarity = FavoriteSimilarity(fav_rows, _title_terms)
-    if not global_profile:
-        return dict(items=[], groups=[], profile_terms=[], fav_count=fav_count)
 
     counts = {name: len(titles) for name, titles in titles_by_source.items()}
     local_profiles = {}
@@ -2118,28 +2236,15 @@ def build_sql_recommendations(per_source=RECO_PER_SOURCE, candidate_pool=False):
             global_profile, local_profiles[name], local_weights[name],
         )
 
-    favorite_title_keys = {_title_key(title) for title in all_titles if _title_key(title)}
-
-    with engine.connect() as c:
-        items_by_source = {
-            source["name"]: _search_source(
-                c,
-                source["name"],
-                global_profile,
-                local_profiles[source["name"]],
-                per_source,
-                local_weights[source["name"]],
-                favorite_title_keys,
-                rotation_date,
-                candidate_pool=candidate_pool,
-                similarity=similarity,
-                feedback_available=feedback['available'],
-            )
-            for source in source_specs
-        }
+    from paper_server.recommendation.retrieval import retrieve_corpus_candidates
+    candidates, retrieval = retrieve_corpus_candidates(
+        engine, fav_rows, feedback['actions'], _title_terms, _is_low_quality_title, rotation_date.year)
+    items_by_source = defaultdict(list)
+    for item in candidates:
+        items_by_source[item['source_name']].append(item)
 
     items, groups = _assemble_source_recommendations(
-        source_specs, items_by_source, effective_profiles, counts, per_source,
+        source_specs, items_by_source, effective_profiles, counts, len(candidates),
     )
     items = [p for p in items if str(p['article_number']) not in feedback['actions']]
     if not candidate_pool:
@@ -2163,12 +2268,13 @@ def build_sql_recommendations(per_source=RECO_PER_SOURCE, candidate_pool=False):
         source_count=len(groups),
         total_source_count=len(source_specs),
         allocation={group["name"]: group["count"] for group in groups},
+        retrieval=retrieval,
     )
     return result
 
 
-from local_ai_recommendations import RecommendationService  # noqa: E402
-from serdes_figures import FigureStore  # noqa: E402
+from paper_server.ai.recommendations import RecommendationService  # noqa: E402
+from paper_server.serdes.figures import FigureStore  # noqa: E402
 
 serdes_figures = FigureStore(ROOT)
 
@@ -2246,7 +2352,7 @@ def personal_recommendations():
 
 @app.route("/api/recommendations")
 def api_recommendations():
-    from local_ai_recommendations import MODES
+    from paper_server.ai.recommendations import MODES
     mode = request.args.get("mode", "match")
     if mode not in MODES:
         return jsonify(ok=False, error="지원하지 않는 추천 모드입니다."), 400
@@ -2273,7 +2379,7 @@ def refresh_recommendations():
 
 @app.route('/api/recommendations/feedback', methods=['GET', 'POST'])
 def recommendation_feedback():
-    from recommendation_feedback import FeedbackStore
+    from paper_server.recommendation.feedback import FeedbackStore
     store = FeedbackStore(engine)
     if request.method == 'GET':
         state = store.read()
@@ -2413,12 +2519,21 @@ def serve_pdf(article_number):
         abort(404)
     if not os.path.isfile(path):
         abort(404)
-    return send_file(path, mimetype="application/pdf")
+    return send_file(path, mimetype="application/pdf",
+                     as_attachment=request.args.get("download") == "1")
 
 
 from web.local_ai_api import create_ai_blueprint  # noqa: E402
+from paper_server.connection import create_connection_blueprint  # noqa: E402
+from paper_server.daily_review import create_daily_review_blueprint  # noqa: E402
+from paper_server.account_activity import install_account_activity  # noqa: E402
+from paper_server.review_media import create_review_media_blueprint  # noqa: E402
 
 app.register_blueprint(create_ai_blueprint(engine, ROOT, _csrf_token))
+app.register_blueprint(create_connection_blueprint(engine))
+app.register_blueprint(create_daily_review_blueprint(lambda: engine, _csrf_token))
+install_account_activity(app, lambda: engine)
+app.register_blueprint(create_review_media_blueprint(lambda: engine))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)

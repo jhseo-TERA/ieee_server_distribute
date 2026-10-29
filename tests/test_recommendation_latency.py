@@ -5,8 +5,8 @@ from unittest.mock import Mock, patch
 
 from sqlalchemy import create_engine, event, text
 
-from recommendation_cache import RecommendationCache
-from local_ai_recommendations import RecommendationService
+from paper_server.recommendation.cache import RecommendationCache
+from paper_server.ai.recommendations import RecommendationService
 import web.app as app_module
 
 
@@ -72,7 +72,7 @@ class BackgroundCacheTests(unittest.TestCase):
         cache.get('a', 15)
         self.ready(cache, 'a')
         cache.builder.side_effect = RuntimeError('private SQL error')
-        with self.assertLogs('recommendation_cache', level='ERROR'):
+        with self.assertLogs('paper_server.recommendation.cache', level='ERROR'):
             cache.get('b', 15)
             with cache.condition:
                 self.assertTrue(cache.condition.wait_for(lambda: bool(cache.errors), timeout=2))
@@ -92,7 +92,7 @@ class BackgroundCacheTests(unittest.TestCase):
             obj = Mock(callback=callback)
             timers.append(obj)
             return obj
-        with patch('local_ai_recommendations.threading.Timer', side_effect=timer):
+        with patch('paper_server.ai.recommendations.threading.Timer', side_effect=timer):
             service.schedule_refresh({'signature': 'a'})
             service.schedule_refresh({'signature': 'a'})
             service.schedule_refresh({'signature': 'b'})

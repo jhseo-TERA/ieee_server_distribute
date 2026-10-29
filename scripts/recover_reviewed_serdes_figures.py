@@ -12,7 +12,7 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT));sys.path.append(str(ROOT/'.venv/Lib/site-packages'))
 import pypdfium2 as pdfium
-from serdes_figures import FigureStore
+from paper_server.serdes.figures import FigureStore
 
 OUT=ROOT/'outputs/serdes_figure_recovery_20260915'
 

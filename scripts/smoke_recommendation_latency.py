@@ -13,8 +13,8 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from sqlalchemy import text
-from local_ai_recommendations import RecommendationService
-from local_ai_repository import LocalAIRepository
+from paper_server.ai.recommendations import RecommendationService
+from paper_server.ai.repository import LocalAIRepository
 import web.app as app_module
 
 

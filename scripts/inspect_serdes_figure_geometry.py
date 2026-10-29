@@ -8,7 +8,7 @@ import pypdfium2 as pdfium
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
-from serdes_figures import text_lines, valid_rect, CAPTION, caption_score
+from paper_server.serdes.figures import text_lines, valid_rect, CAPTION, caption_score
 
 def main():
     out=ROOT/'outputs/serdes_figure_audit'

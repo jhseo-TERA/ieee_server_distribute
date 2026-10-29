@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
-from serdes_figures import (FigureStore, VERSION, STORAGE_VERSION, caption_score, find_candidates,
+from paper_server.serdes.figures import (FigureStore, VERSION, STORAGE_VERSION, caption_score, find_candidates,
                            text_lines, merge_tiles, page_rect, render_crop, recover_caption_lines, scan_document)
 import web.app as app_module
 
@@ -12,7 +12,7 @@ import web.app as app_module
 class FigureSelectionTests(unittest.TestCase):
     def test_reviewed_irregular_panels_preserve_pixels_and_positions(self):
         from PIL import Image
-        from serdes_figures import isolate_reviewed_regions
+        from paper_server.serdes.figures import isolate_reviewed_regions
         source = Image.new('RGB',(100,80),'red')
         result = isolate_reviewed_regions(source,[10,20,110,100],[[10,20,110,60],[10,60,50,100]])
         self.assertEqual(result.size,source.size)
@@ -22,8 +22,8 @@ class FigureSelectionTests(unittest.TestCase):
 
     def test_reviewed_irregular_panels_reject_invalid_regions(self):
         from PIL import Image
-        from serdes_figures import isolate_reviewed_regions
-        from local_ai_documents import DocumentError
+        from paper_server.serdes.figures import isolate_reviewed_regions
+        from paper_server.ai.documents import DocumentError
         source=Image.new('RGB',(100,100))
         for regions in ([],[[0,0,101,100]],[[10,0,0,100]],[[0,0,float('nan'),100]],[[0,0,'50',100]]):
             with self.assertRaises(DocumentError):
@@ -211,13 +211,15 @@ class FigureStoreTests(unittest.TestCase):
     def test_absence_prepare_checks_real_page_count_and_preserves_prior_image(self):
         (self.root/'config').mkdir();entry=self.absence()
         self.store.review_path.write_text(json.dumps({'123':entry}))
-        with patch('pypdfium2.PdfDocument') as doc, patch('serdes_figures.scan_document') as scan:
+        with patch('pypdfium2.PdfDocument') as doc, patch('paper_server.serdes.figures.scan_document') as scan, \
+                patch('paper_server.parsers.paddle_layout.PaddleLayoutStore.prepare') as layout:
             doc.return_value.__enter__.return_value.__len__.return_value=2
             with self.assertRaisesRegex(ValueError,'actual complete document'):
                 self.store.prepare(self.paper,retry=True)
             doc.return_value.__enter__.return_value.__len__.return_value=3
             result=self.store.prepare(self.paper,retry=True)
             self.assertEqual(result['status'],'no_top_diagram');scan.assert_not_called()
+            layout.assert_not_called()
         self.assertTrue((self.folder/self.record['image']).exists())
         self.assertEqual(self.store.lookup(self.paper)['status'],'no_top_diagram')
         self.pdf.write_bytes(b'%PDF-changed')
@@ -288,10 +290,20 @@ class FigureStoreTests(unittest.TestCase):
             self.assertEqual(self.store.prepare(self.paper)['status'],'available')
         self.assertEqual((self.folder/'index.json').read_bytes(),before)
 
+    def test_reviewed_cache_remains_available_after_layout_model_update(self):
+        self.record.update(verified=True, selection='source_review',
+                           layout_parser={'mode':'auto', 'availability':'ready', 'model_signature':'old-model'})
+        self.write_record()
+        with patch('paper_server.parsers.paddle_layout.PaddleLayoutStore.status', return_value={'status':'ready'}), \
+                patch('paper_server.parsers.paddle_layout.PaddleLayoutStore.model_signature', return_value='new-model'), \
+                patch('paper_server.parsers.paddle_layout.PaddleLayoutStore.prepare', side_effect=AssertionError('Keep reviewed selection')):
+            self.assertEqual(self.store.public(self.paper)['status'],'available')
+            self.assertEqual(self.store.prepare(self.paper)['selection'],'source_review')
+
     def test_legacy_cache_remains_readable_but_is_rebuilt_on_prepare(self):
         self.record['version']=STORAGE_VERSION;self.write_record()
         self.assertEqual(self.store.public(self.paper)['status'],'available')
-        with patch('pypdfium2.PdfDocument') as document, patch('serdes_figures.scan_document',return_value=[]):
+        with patch('pypdfium2.PdfDocument') as document, patch('paper_server.serdes.figures.scan_document',return_value=[]):
             document.return_value.__enter__.return_value.__len__.return_value=1
             result=self.store.prepare(self.paper)
         self.assertEqual(result['version'],VERSION)
@@ -354,8 +366,13 @@ class FigureStoreTests(unittest.TestCase):
 
 class FigureRouteTests(unittest.TestCase):
     def setUp(self):
+        config=patch.dict(app_module.app.config, TESTING=True, ACCOUNT_AUTH_ENABLED=True, SESSION_COOKIE_SECURE=False)
+        config.start();self.addCleanup(config.stop)
+        account={'id':991, 'username':'viewer', 'role':'viewer', 'is_active':1,
+                 'session_version':1, 'must_change_password':0}
+        accounts=patch.object(app_module.accounts, 'get', side_effect=lambda key: account if key==991 else None)
+        accounts.start();self.addCleanup(accounts.stop)
         self.client=app_module.app.test_client()
-        app_module.app.config['TESTING']=True
 
     def test_routes_require_login(self):
         for path in ('/api/serdes/papers/123/block-diagram','/api/serdes/papers/123/block-diagram/image'):
@@ -363,7 +380,7 @@ class FigureRouteTests(unittest.TestCase):
 
     def login(self):
         with self.client.session_transaction() as session:
-            session.update(authenticated=True,username='viewer',role='viewer')
+            session.update(authenticated=True,account_id=991,session_version=1,username='viewer',role='viewer')
 
     def test_viewer_can_read_cached_figure_but_no_preparation_is_triggered(self):
         self.login()

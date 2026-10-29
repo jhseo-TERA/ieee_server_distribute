@@ -9,9 +9,9 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from sqlalchemy import text
-from account_store import AccountStore, account_scope
-from local_ai_recommendations import RecommendationService
-from local_ai_repository import LocalAIRepository
+from paper_server.accounts import AccountStore, account_scope
+from paper_server.ai.recommendations import RecommendationService
+from paper_server.ai.repository import LocalAIRepository
 import web.app as server
 
 

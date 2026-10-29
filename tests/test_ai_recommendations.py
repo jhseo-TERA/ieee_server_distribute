@@ -4,7 +4,7 @@ import threading
 import unittest
 from unittest.mock import Mock, patch
 
-from local_ai_recommendations import (
+from paper_server.ai.recommendations import (
     RecommendationService, VERSION, balanced, select_mode, validate_profile, validated_ranks,
 )
 import web.app as app_module
@@ -213,7 +213,7 @@ class RecommendationCacheTests(unittest.TestCase):
         self.service.latest = Mock(return_value=job)
         self.service.enrich = Mock(side_effect=deepcopy)
         self.service.sql_cache.get = Mock()
-        with patch('local_ai_recommendations.VERSION', 'favorites-ai-4'):
+        with patch('paper_server.ai.recommendations.VERSION', 'favorites-ai-4'):
             view = self.service.view()
         self.assertEqual(view['engine'], 'hybrid')
         self.assertEqual(view['items'][0]['article_number'], 'p')

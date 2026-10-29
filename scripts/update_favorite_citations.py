@@ -327,6 +327,8 @@ class IEEEClient(HttpClient):
     def __init__(self, api_key: str, delay: float):
         super().__init__(delay)
         self.api_key = api_key
+        from paper_server.citation_http import CitationHTTP
+        self.transport = CitationHTTP(session=self.session)
 
     def fetch(self, article_number: str) -> CitationResult | None:
         return self.fetch_many([article_number]).get(str(article_number))
@@ -335,9 +337,10 @@ class IEEEClient(HttpClient):
         self, article_numbers: list[str]
     ) -> dict[str, CitationResult]:
         keys = [str(value) for value in article_numbers]
-        payload = self.get_json(
-            IEEE_API_URL,
-            params={
+        from paper_server.citation_http import DAY, SourceUnavailable
+        try:
+            payload = self.transport.get('ieee', IEEE_API_URL,
+                params={
                 "apikey": self.api_key,
                 "format": "json",
                 # The exact article_number filter can report total_records=1
@@ -346,9 +349,12 @@ class IEEEClient(HttpClient):
                 # parser still requires an exact article_number match.
                 "max_records": min(200, max(25, len(keys) * 4)),
                 "querytext": " OR ".join(keys),
-            },
-            provider="IEEE",
-        )
+                },
+                key=self.api_key, ttl=DAY)
+        except SourceUnavailable as exc:
+            if exc.status in (401, 403, 429):
+                raise ProviderQuotaError('IEEE request deferred: '+exc.reason) from None
+            raise CitationError('IEEE request unavailable: '+exc.reason) from None
         return parse_ieee_results(payload or {}, set(keys))
 
 

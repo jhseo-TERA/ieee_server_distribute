@@ -4,7 +4,7 @@ from pathlib import Path
 import unittest
 
 from scripts.build_serdes_review_queue import csv_cell, write_package
-from serdes_review_queue import _enrich_measurement, build_review_package
+from paper_server.serdes.review_queue import _enrich_measurement, build_review_package
 
 
 def measurement(mid, **updates):

@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 from PIL import Image, ImageDraw
 sys.path.insert(0, str(ROOT))
 sys.path.append(str(ROOT / '.venv/Lib/site-packages'))
-from serdes_figures import FigureStore, VERSION
+from paper_server.serdes.figures import FigureStore, VERSION
 
 
 def main():

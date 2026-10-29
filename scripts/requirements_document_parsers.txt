@@ -1,0 +1,5 @@
+# Dedicated Windows/Python 3.12 CPU runtime; never install into the web server venv.
+# Full transitive pins are recorded in requirements_document_parsers.lock.txt.
+paddleocr==3.7.0
+paddlepaddle==3.3.1
+mineru==4.0.10

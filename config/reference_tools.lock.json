@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "purpose": "Project-local offline reference parsing comparison; not a live server dependency",
+  "sources": {
+    "mineru": {"repository":"https://github.com/opendatalab/MinerU","tag":"mineru-4.0.10-released","commit":"c221cc41bc911ad0df3eaeda97acf6a1bfe9bf93"},
+    "grobid": {"repository":"https://github.com/grobidOrg/grobid","tag":"0.9.1","commit":"523bb8e97f357e93682dc4eaa6d22faa8b5b93de"},
+    "ollama": {"repository":"https://github.com/ollama/ollama","tag":"v0.40.4","commit":"45e6011815c74acde6a346512856b69dd79dd22b"}
+  },
+  "grobid_crf_image": "grobid/grobid@sha256:eb306e6d494f6f7e89b35bbaf3b4925afd58c6a5638c775f2a1c35bfd3c5db0d",
+  "java": {"version":"Temurin 21.0.12.1+1 Windows x64","sha256":"f9d6e191ab098c0d416e7d588a24420a8621cd2f4720dab2459b8b7b2d2d8b4e"},
+  "mode": {"grobid":"Windows CRF raw-reference strings only; no native Windows PDF segmentation","consolidation":0,"mineru":"basic ONNX CPU, offline model cache","llm":"existing loopback Ollama; model digests are saved with local acquisition state"}
+}

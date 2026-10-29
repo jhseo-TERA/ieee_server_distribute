@@ -1,0 +1,221 @@
+{
+  "version": 1,
+  "scope": "Known-error regression cases from the 500-PDF batch, reviewed against original references; used for development, not an independent accuracy estimate.",
+  "cases": [
+    {
+      "pdf": "ieee-pdf/10121705.pdf",
+      "source_sha256": "b6fba4b429ecebae8fd80d65deb0dcf882b4d19d937365c6aea3778601bfa0cc",
+      "row": {
+        "number": 6,
+        "page": 4,
+        "title": "Design considerations for a 100 Gbit/s SiGe-BiCMOS power multiplexer with $2 \\mathrm { ~ \\textit ~ { ~ } ~ } V _ { \\mathtt { p p } }$ differential voltage swing",
+        "author": "Uhl",
+        "year": 2018,
+        "doi": null,
+        "raw": "C. Uhl, H. Hettrich, and M. Moller, “Design considerations for a 100 Gbit/s SiGe-BiCMOS power multiplexer with $2 \\mathrm { ~ \\textit ~ { ~ } ~ } V _ { \\mathtt { p p } }$ differential voltage swing,” IEEE J. Solid-State Circuits, vol. 53, no. 9, pp. 2479–2487, Sep. 2018."
+      },
+      "expected_display": "Design considerations for a 100 Gbit/s SiGe-BiCMOS power multiplexer with 2 V_pp differential voltage swing",
+      "pdf_reference_text": "[6] C. Uhl, H. Hettrich, and M. Moller, “Design considerations for a\r\n100 Gbit/s SiGe-BiCMOS power multiplexer with 2 Vpp differen￾tial voltage swing,” IEEE J. Solid-State Circuits, vol. 53, no. 9,\r\npp. 2479–2487, Sep. 2018.\r\n",
+      "source_image": "tmp/pdfs/reference-normalization/10121705-ref6.png"
+    },
+    {
+      "pdf": "ieee-pdf/7993640.pdf",
+      "source_sha256": "72aa0963b53326282320f44ffccf5b83cc5e108b1e49ad2ed99f8704917fe20f",
+      "row": {
+        "number": 7,
+        "page": 4,
+        "title": "A 45Gb/s PAM-4 transmitter delivering $1 . 3 \\mathrm { V } _ { \\mathrm { p p d } }$ output swing with 1V supply in 28nm CMOS FDSOI",
+        "author": "Bassi1",
+        "year": 2016,
+        "doi": null,
+        "raw": "M. Bassi1 et al., “A 45Gb/s PAM-4 transmitter delivering $1 . 3 \\mathrm { V } _ { \\mathrm { p p d } }$ output swing with 1V supply in 28nm CMOS FDSOI,” in IEEE Int. Solid-State Circuits Conf. Dig. Tech. Papers, Feb. 2016, pp. 66–67."
+      },
+      "expected_display": "A 45Gb/s PAM-4 transmitter delivering 1.3 V_ppd output swing with 1V supply in 28nm CMOS FDSOI",
+      "pdf_reference_text": "[7] M. Bassi1 et al., “A 45Gb/s PAM-4 transmitter delivering 1.3Vppd output\r\nswing with 1V supply in 28nm CMOS FDSOI,” in IEEE Int. Solid-State\r\nCircuits Conf. Dig. Tech. Papers, Feb. 2016, pp. 66–67.\r\nAuthorized licensed use limited to: Yonsei Univ. Downloaded on September 14,2026 at 13:14:34 UTC from IEEE Xplore. Restrictions apply. ",
+      "source_image": "tmp/pdfs/reference-normalization/7993640-ref7.png"
+    },
+    {
+      "pdf": "ieee-pdf/7168640.pdf",
+      "source_sha256": "2b616299a12f5f7fa84c8b30f0a7097704610b7df3ed92ec9995247515986454",
+      "row": {
+        "number": 1,
+        "page": 4,
+        "title": "A T-Coil-Enhanced 8.5 Gb/s High-Swing SST Transmitter in 65 nm Bulk CMOS With < -16 dB Return Loss Over 10 GHz Bandwidth[J]",
+        "author": "Kossel",
+        "year": 2008,
+        "doi": null,
+        "raw": "Marcel Kossel, Christian Menolfi, Jonas Weiss. A T-Coil-Enhanced 8.5 Gb/s High-Swing SST Transmitter in 65 nm Bulk CMOS With < -16 dB Return Loss Over 10 GHz Bandwidth[J]. IEEE JOURNAL OF SOLID-STATE CIRCUITS, 2008, 43(12): 2905-2920."
+      },
+      "expected_display": "A T-Coil-Enhanced 8.5 Gb/s High-Swing SST Transmitter in 65 nm Bulk CMOS With < -16 dB Return Loss Over 10 GHz Bandwidth"
+    },
+    {
+      "pdf": "ieee-pdf/7168640.pdf",
+      "source_sha256": "2b616299a12f5f7fa84c8b30f0a7097704610b7df3ed92ec9995247515986454",
+      "row": {
+        "number": 2,
+        "page": 4,
+        "title": "A low-power high-swing voltagemode transmitter[J]",
+        "author": "Shuai",
+        "year": 2012,
+        "doi": null,
+        "raw": "Chen Shuai, Li Hao, Shi Xiaobing. A low-power high-swing voltagemode transmitter[J]. Journal of Semiconductors, 2012, 33(4)."
+      },
+      "expected_display": "A low-power high-swing voltagemode transmitter"
+    },
+    {
+      "pdf": "ieee-pdf/7168640.pdf",
+      "source_sha256": "2b616299a12f5f7fa84c8b30f0a7097704610b7df3ed92ec9995247515986454",
+      "row": {
+        "number": 3,
+        "page": 4,
+        "title": "A 16Gb/s source-seriesterminated transmitter in 65nm CMOS SOI[C]",
+        "author": "Menolfi",
+        "year": 2007,
+        "doi": null,
+        "raw": "C. Menolfi, T.Toifl, P. Buchmann, M. Kossel. A 16Gb/s source-seriesterminated transmitter in 65nm CMOS SOI[C]. IEEE Int. Solid-State Circuits Conf. 2007"
+      },
+      "expected_display": "A 16Gb/s source-seriesterminated transmitter in 65nm CMOS SOI"
+    },
+    {
+      "pdf": "ieee-pdf/7168640.pdf",
+      "source_sha256": "2b616299a12f5f7fa84c8b30f0a7097704610b7df3ed92ec9995247515986454",
+      "row": {
+        "number": 4,
+        "page": 4,
+        "title": "A 20Gb/s SerDes Transmitter with Adjustable Source Impedance and 4-tap Feed-Forward Equalization in 65nm Bulk CMOS[C]",
+        "author": "Philpott",
+        "year": 2008,
+        "doi": null,
+        "raw": "R. A. Philpott, J. S. Humble, R. A. Kertis. A 20Gb/s SerDes Transmitter with Adjustable Source Impedance and 4-tap Feed-Forward Equalization in 65nm Bulk CMOS[C]. IEEE 2008 Custom Intergrated Circuits Conference (CICC), 2008."
+      },
+      "expected_display": "A 20Gb/s SerDes Transmitter with Adjustable Source Impedance and 4-tap Feed-Forward Equalization in 65nm Bulk CMOS"
+    },
+    {
+      "pdf": "ieee-pdf/7168640.pdf",
+      "source_sha256": "2b616299a12f5f7fa84c8b30f0a7097704610b7df3ed92ec9995247515986454",
+      "row": {
+        "number": 5,
+        "page": 4,
+        "title": "A 28-Gb/s 4- Tap FFE/15-Tap DFE Serial Link Transceiver in 32-nm SOI CMOS Technology[J]",
+        "author": "Bulzacchelli",
+        "year": 2012,
+        "doi": null,
+        "raw": "John F. Bulzacchelli, Christian Menolfi, Troy J. Beukema. A 28-Gb/s 4- Tap FFE/15-Tap DFE Serial Link Transceiver in 32-nm SOI CMOS Technology[J]. IEEE JOURNAL OF SOLID-STATE CIRCUITS, 2012, 47(12): 3232-3247."
+      },
+      "expected_display": "A 28-Gb/s 4- Tap FFE/15-Tap DFE Serial Link Transceiver in 32-nm SOI CMOS Technology"
+    },
+    {
+      "pdf": "ieee-pdf/10248949.pdf",
+      "source_sha256": "bb15a717440c93c3e1cd4ab83fe625761da17825c482e8e9563919d8b6ce46af",
+      "row": {
+        "number": 13,
+        "page": 14,
+        "title": "A DC-90-GHz $\\scriptstyle { \\left 4 - \\mathrm { V } _ { \\mathrm { p p } } \\right. }$ modulator driver in a 0.13-μm SiGe:C BiC-MOS process",
+        "author": "Rito",
+        "year": 2017,
+        "doi": "10.1109/tmtt.2017.2757927",
+        "raw": "P. Rito, I. G. López, A. Awny, M. Ko, A. C. Ulusoy, and D. Kissinger, “A DC-90-GHz $\\scriptstyle { \\left 4 - \\mathrm { V } _ { \\mathrm { p p } } \\right. }$ modulator driver in a 0.13-μm SiGe:C BiC-MOS process,” IEEE Trans. Microw. Theory Techn., vol. 65, no. 12, pp. 5192–5202, Dec. 2017, doi: [10.1109/TMTT.2017.2757927."
+      },
+      "expected_display": "A DC-90-GHz 4-Vpp modulator driver in a 0.13-μm SiGe:C BiCMOS process",
+      "pdf_reference_text": "[13] P. Rito, I. G. López, A. Awny, M. Ko, A. C. Ulusoy, and D. Kissinger,\r\n“A DC-90-GHz 4-Vpp modulator driver in a 0.13-µm SiGe:C BiC￾MOS process,” IEEE Trans. Microw. Theory Techn., vol. 65, no. 12,\r\npp. 5192–5202, Dec. 2017, doi: 10.1109/TMTT.2017.2757927.\r\n",
+      "source_image": "tmp/pdfs/reference-normalization/10248949-ref13.png"
+    },
+    {
+      "pdf": "ieee-pdf/7969067.pdf",
+      "source_sha256": "43a12b23015aa0df09af8f552a89f2e8b66d5dcc695b9f574b39776a61ce046c",
+      "row": {
+        "number": 3,
+        "page": 4,
+        "title": "57.5GHz Bandwidth 4 $. 8 V _ { p p }$ Swing Linear Modulator Driver for 64GBaud m-PAM Systems",
+        "author": "Zandieh",
+        "year": 2017,
+        "doi": null,
+        "raw": "A. Zandieh et al., “57.5GHz Bandwidth 4 $. 8 V _ { p p }$ Swing Linear Modulator Driver for 64GBaud m-PAM Systems,” IEEE IMS, June 2017."
+      },
+      "expected_display": "57.5GHz Bandwidth 4.8Vpp Swing Linear Modulator Driver for 64GBaud m-PAM Systems",
+      "pdf_reference_text": "[3] A. Zandieh et al., “57.5GHz Bandwidth 4.8Vpp Swing Linear\r\nModulator Driver for 64GBaud m-PAM Systems,” IEEE\r\nIMS, June 2017.\r\n",
+      "source_image": "tmp/pdfs/reference-normalization/7969067-ref3.png"
+    },
+    {
+      "pdf": "ieee-pdf/7969067.pdf",
+      "source_sha256": "43a12b23015aa0df09af8f552a89f2e8b66d5dcc695b9f574b39776a61ce046c",
+      "row": {
+        "number": 6,
+        "page": 4,
+        "title": "A 55 nm triple gate oxide 9 metal layers SiGe BiCMOS technology featuring 320 GHz $f _ { T }$ 330/350 GHz fMAX HBT and high-Q millimeter-wave passives",
+        "author": "Chevalier",
+        "year": 2014,
+        "doi": null,
+        "raw": "P. Chevalier et al., “A 55 nm triple gate oxide 9 metal layers SiGe BiCMOS technology featuring 320 GHz $f _ { T }$ 330/350 GHz fMAX HBT and high-Q millimeter-wave passives,” in IEEE International Electron Devices Meeting (IEDM), pp. 39, Dec. 2014."
+      },
+      "expected_display": "A 55 nm triple gate oxide 9 metal layers SiGe BiCMOS technology featuring 320 GHz f_T 330/350 GHz fMAX HBT and high-Q millimeter-wave passives",
+      "pdf_reference_text": "[6] P. Chevalier et al., “A 55 nm triple gate oxide 9 metal layers\r\nSiGe BiCMOS technology featuring 320 GHz fT 330/350\r\nGHz fMAX HBT and high-Q millimeter-wave passives,” in\r\nIEEE International Electron Devices Meeting (IEDM), pp.\r\n39, Dec. 2014.\r\n",
+      "source_image": "tmp/pdfs/reference-normalization/7969067-ref6.png"
+    },
+    {
+      "pdf": "ieee-pdf/9537159.pdf",
+      "source_sha256": "5cf9ee95365572817a9192fd02cec2a7991ad034d73f160a034bbd8068548312",
+      "row": {
+        "number": 17,
+        "page": 13,
+        "title": "A 10-to-112 Gb/s DSP-DAC-based transmitter with 1.2 $V _ { \\mathrm { p p d } }$ output swing in 7 nm FinFET",
+        "author": "Groen",
+        "year": 2020,
+        "doi": null,
+        "raw": "E. Groen et al., “A 10-to-112 Gb/s DSP-DAC-based transmitter with 1.2 $V _ { \\mathrm { p p d } }$ output swing in 7 nm FinFET,” in IEEE Int. Solid-State Circuits Conf. (ISSCC) Dig. Tech. Papers, Feb. 2020, pp. 120–121."
+      },
+      "expected_display": "A 10-to-112 Gb/s DSP-DAC-based transmitter with 1.2 V_ppd output swing in 7 nm FinFET",
+      "pdf_reference_text": "[17] E. Groen et al., “A 10-to-112 Gb/s DSP-DAC-based transmitter with\r\n1.2 Vppd output swing in 7 nm FinFET,” in IEEE Int. Solid-State Circuits\r\nConf. (ISSCC) Dig. Tech. Papers, Feb. 2020, pp. 120–121.\r\n",
+      "source_image": "tmp/pdfs/reference-normalization/9537159-ref17.png"
+    },
+    {
+      "pdf": "ieee-pdf/7539209.pdf",
+      "source_sha256": "6473f7a4969f9c4f7452964109b2748b514be36ea8692fb7f1be401d25c3bf58",
+      "row": {
+        "number": 2,
+        "page": 1,
+        "title": "A 20 Gb/s 0.4 pJ/b Energy-Efficient Transmitter Driver Architecture Utilizing Constant ${ \\bf G _ { m _ { 2 } } } ^ { \\mathrm { { { \\text> } } } }$ in IEEE A-SSCC, 2015.",
+        "author": "Jeong",
+        "year": 2015,
+        "doi": null,
+        "raw": "G.-S. Jeong, et al., “A 20 Gb/s 0.4 pJ/b Energy-Efficient Transmitter Driver Architecture Utilizing Constant ${ \\bf G _ { m _ { 2 } } } ^ { \\mathrm { { { \\text> } } } }$ in IEEE A-SSCC, 2015."
+      },
+      "expected_display": "A 20 Gb/s 0.4 pJ/b Energy-Efficient Transmitter Driver Architecture Utilizing Constant Gm",
+      "pdf_reference_text": "[2] G.-S. Jeong, et al., “A 20 Gb/s 0.4 pJ/b Energy-Efficient Transmitter \r\nDriver Architecture Utilizing Constant Gm,” in IEEE A-SSCC, 2015. \r\nFig. 1. Overall architecture of the forwarded-clock transmitter.\r\nFig. 2. Die photomicrograph.\r\nOverall 2+1 CH TX\r\n20mW @ 2 x 10Gb/s\r\n7.4-dB Loss @ 5 GHz\r\nMain tap 3 : Pre-emp. tap 1\r\n62.5ps 30mV\r\n7.4-dB Loss @ 5 GHz\r\nWithout Pre-emphasis\r\nFig. 3. Measured eye diagram at 10 Gb/s/ch with a lossy channel.\r\nFig. 4. Measured output swing range (single-ended, 4Gb/s/ch).\r\nGlobal PLL\r\nForwarded clock Transmitter\r\nRef. \r\nCLK\r\nSer\r\nSer\r\nCH0\r\nCH1\r\nCLK\r\nCH\r\nData\r\nN\r\nGlobal \r\nImpedance Regulator\r\nDrv\r\nDrv\r\nDrv\r\nN\r\n500um\r\nCAP\r\nCAP\r\nCH0\r\nCH1\r\nCAP\r\nPLL &\r\nCH_CK 300um\r\n978-1-4799-5341-7/16/$31.00 ©2016 IEEE\r\n \r\n2906 \r\n \r\nAuthorized licensed use limited to: Yonsei Univ. Downloaded on July 13,2026 at 15:41:41 UTC from IEEE Xplore. Restrictions apply. ",
+      "source_image": "tmp/pdfs/reference-normalization/7539209-ref2.png"
+    },
+    {
+      "pdf": "ieee-pdf/8974442.pdf",
+      "source_sha256": "2e4c263bf72c502cbdfd580f90420f22ebf4dd03bef5c39fcfb64f9f42a6a164",
+      "row": {
+        "number": 12,
+        "page": 13,
+        "title": "A DC-90-GHz $\\mathrm { 4 { \\_ } V _ { p p } }$ modulator driver in a 0.13-μm SiGe:C BiC-MOS process",
+        "author": "Rito",
+        "year": 2017,
+        "doi": null,
+        "raw": "P. Rito, I. G. López, A. Awny, M. Ko, A. C. Ulusoy, and D. Kissinger, “A DC-90-GHz $\\mathrm { 4 { \\_ } V _ { p p } }$ modulator driver in a 0.13-μm SiGe:C BiC-MOS process,” IEEE Trans. Microw. Theory Techn., vol. 65, no. 12, pp. 5192–5202, Dec. 2017."
+      },
+      "expected_display": "A DC-90-GHz 4-Vpp modulator driver in a 0.13-μm SiGe:C BiCMOS process",
+      "pdf_reference_text": "[12] P. Rito, I. G. López, A. Awny, M. Ko, A. C. Ulusoy, and D. Kissinger,\r\n“A DC-90-GHz 4-Vpp modulator driver in a 0.13-μm SiGe:C BiC￾MOS process,” IEEE Trans. Microw. Theory Techn., vol. 65, no. 12,\r\npp. 5192–5202, Dec. 2017.\r\n",
+      "source_image": "tmp/pdfs/reference-normalization/8974442-ref12.png"
+    },
+    {
+      "pdf": "ieee-pdf/11224373.pdf",
+      "source_sha256": "44b0394a8cb44841cbe5ed44ead11935ec892a1186c8d43713c6296758205861",
+      "row": {
+        "number": 4,
+        "page": 4,
+        "title": "A 112-Gb/s \\$-\\$8.2\\$- \\$dBm sensitivity 4-PAM linear TIA in 16-nm CMOS with co-packaged photodiodes",
+        "author": "Patel",
+        "year": 2023,
+        "doi": null,
+        "raw": "D. Patel, A. Sharif-Bakhtiar, and T. C. Carusone, “A 112-Gb/s \\$-\\$8.2\\$- \\$dBm sensitivity 4-PAM linear TIA in 16-nm CMOS with co-packaged photodiodes,” IEEE J. Solid-State Circuits, vol. 58, no. 3, pp. 771–784, Mar. 2023."
+      },
+      "expected_display": "A 112-Gb/s -8.2-dBm sensitivity 4-PAM linear TIA in 16-nm CMOS with co-packaged photodiodes",
+      "pdf_reference_text": "[4] D. Patel, A. Sharif-Bakhtiar, and T. C. Carusone, “A 112-Gb/s $-$8.2$-\n\n$dBm sensitivity 4-PAM linear TIA in 16-nm CMOS with co-packaged\n\nphotodiodes,” IEEE J. Solid-State Circuits, vol. 58, no. 3, pp. 771–784,\n\nMar. 2023.\n",
+      "source_image": "tmp/pdfs/reference-normalization/11224373-ref4.png",
+      "note": "Original PDF prints dollar math fences literally; normalize their presentation, retaining both minus/hyphen characters and the value/unit."
+    }
+  ]
+}

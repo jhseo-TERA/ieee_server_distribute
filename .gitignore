@@ -9,8 +9,8 @@
 config/private_sources.json
 
 # Private operational snapshots (retained locally and backed up to Drive)
-/*_FIX_REPORT_*.md
-/*_FIX_STATUS_*.md
+**/*_FIX_REPORT_*.md
+**/*_FIX_STATUS_*.md
 
 # Python and test runtimes
 .venv/

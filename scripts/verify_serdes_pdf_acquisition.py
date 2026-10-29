@@ -60,7 +60,7 @@ def main():
         sys.path.insert(0,str(ROOT))
         from sqlalchemy import bindparam, text
         from web.app import engine
-        from serdes_figures import FigureStore
+        from paper_server.serdes.figures import FigureStore
         from collections import Counter
         ids=[p['article_number'] for p in results]
         with engine.connect() as conn:

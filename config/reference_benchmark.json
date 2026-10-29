@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "note": "Small manually reviewed source-field fixture. Missing titles are deliberately null; model knowledge must not fill them. Gold counts and last-item boundaries are checked against rendered reference pages.",
+  "papers": [
+    {"id":"11721226","pdf":"ieee-pdf/11721226.pdf","start":13,"pages":1,"expected_count":32,"gold":[
+      {"number":1,"title":"Optical architecture and interconnection for datacenter networking and machine learning","author":"Liu","year":2024},
+      {"number":2,"title":"Recent advances in optical technologies for data centers: A review","author":"Cheng","year":2018},
+      {"number":5,"title":"A 4 × 112 Gb/s PAM-4 silicon-photonic transmitter and receiver chipsets for linear-drive co-packaged optics","author":"Liu","year":2024},
+      {"number":9,"title":"Taking silicon photonics modulators to a higher performance level: State-of-the-art and a review of new technologies","author":"Rahim","year":2021,"doi":"10.1117/1.ap.3.2.024003"},
+      {"number":10,"title":"A dual-polarization silicon-photonic coherent transmitter supporting 552 Gb/s/wavelength","author":"Ahmed","year":2020},
+      {"number":32,"title":"High-efficiency > 110-GHz-bandwidth 4-V ppd InP-DHBT linear modulator driver for beyond-200-GBd optical transceivers","author":"Hersent","year":2025}
+    ]},
+    {"id":"10633778","pdf":"ieee-pdf/10633778.pdf","start":12,"pages":2,"expected_count":43,"gold":[
+      {"number":1,"title":"Cisco Annual Internet Report (2018–2023)","author":null,"year":2018},
+      {"number":2,"title":"2023 Ethernet Alliance Roadmap—The Past? Present and Future of Ethernet","author":null,"year":2023},
+      {"number":5,"title":"High-speed silicon photonics modulators","author":"Witzens","year":2018},
+      {"number":10,"title":"A 2.25-mW/Gb/s 80-Gb/s-PAM4 linear driver with a single supply using stacked current-mode architecture in 65-nm CMOS","author":"Nakano","year":2017},
+      {"number":43,"title":"A linear differential transimpedance amplifier for 100-Gb/s integrated coherent optical fiber receivers","author":"Awny","year":2018}
+    ]},
+    {"id":"11509585","pdf":"ieee-pdf/11509585.pdf","start":4,"pages":1,"expected_count":11,"gold":[
+      {"number":1,"title":"A 112-Gb/s PAM-4 Retimer Transceiver With Jitter-Filtering Clocking Scheme and BER Optimization Technique in 28-nm CMOS","author":"Xu","year":2025},
+      {"number":2,"title":"Analysis and Modeling of Bang-Bang Clock and Data Recovery Circuits","author":"Lee","year":2004},
+      {"number":5,"title":"A 10-Gb/s, 0.03-mm2, 1.28-pJ/bit Half-Rate Injection-Locked CDR With Path Mismatch Tracking Loop in a 28-nm CMOS Technology","author":"Choo","year":2019},
+      {"number":11,"title":"A 56-Gb/s 50-mW NRZ Receiver in 28-nm CMOS","author":"Atharav","year":2022}
+    ]},
+    {"id":"11509525","pdf":"ieee-pdf/11509525.pdf","start":4,"pages":1,"expected_count":11,"gold":[
+      {"number":1,"title":"A 4-to-10.5 Gb/s Continuous-Rate Digital Clock and Data Recovery With Automatic Frequency Acquisition","author":"Shu","year":2016},
+      {"number":2,"title":"A 6.5–12.5-Gb/s Half-Rate Single-Loop All-Digital Referenceless CDR in 28-nm CMOS","author":"Yu","year":2020},
+      {"number":5,"title":"1.4-8 Gb/s Low Power Quarter-Rate Single-Loop Referenceless CDR With Unlimited Capture Range","author":"Kim","year":2024},
+      {"number":11,"title":"A 37.8dB Channel Loss 0.6μs Lock Time CDR with Flash Frequency Acquisition in 5nm FinFET","author":"Kao","year":2023}
+    ]},
+    {"id":"11509475","pdf":"ieee-pdf/11509475.pdf","start":4,"pages":1,"expected_count":8,"gold":[
+      {"number":1,"title":"A 0.297-pJ/Bit 50.4-Gb/s/wire inverter-based short-reach simultaneous bi-directional transceiver for die-to-die interface in 5-nm CMOS","author":"Nishi","year":2023},
+      {"number":2,"title":"A 64 Gb/s/wire 10.5 Tb/s/mm/layer single-ended SBD transceiver with echo and crosstalk cancellation","author":"Wang","year":2025},
+      {"number":5,"title":"A 0.29 pJ/b 5.27 Tb/s/mm UCIe advanced package link in 3-nm FinFET with 2.5D CoWoS packaging","author":"Melek","year":2025},
+      {"number":8,"title":"UCle Standard Specification","author":null,"year":null}
+    ]},
+    {"id":"9830507","pdf":"ieee-pdf/9830507.pdf","start":2,"pages":1,"expected_count":9,"gold":[
+      {"number":1,"title":null,"author":"Hollis","year":2021},
+      {"number":2,"title":null,"author":"Kim","year":2018},
+      {"number":5,"title":null,"author":"Chen","year":2021},
+      {"number":9,"title":null,"author":"Jeong","year":2020}
+    ]},
+    {"id":"jlt-43-3-1130","pdf":"optica-pdf/jlt-43-3-1130.pdf","start":10,"pages":1,"expected_count":32,"gold":[
+      {"number":1,"title":"Silicon microring modulator achieving 1 Tb/s net rate with coherent detection","author":"Zheng","year":2023},
+      {"number":9,"title":"C-band 67 GHz silicon photonic microring modulator for dispersion-uncompensated 100 Gbaud PAM-4","author":"Chan","year":2022},
+      {"number":18,"title":"Next generation reservoir computing","author":"Gauthier","year":2021},
+      {"number":27,"title":"A Practical Guide to Applying Echo State Networks","author":"Lukoševičius","year":2012},
+      {"number":32,"title":"Random search for hyper-parameter optimization","author":"Bergstra","year":2012}
+    ]}
+  ]
+}

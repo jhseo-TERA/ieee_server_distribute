@@ -14080,5 +14080,33 @@
     "reviewed_on": "2026-09-29",
     "review_batch": "20260929-source-review-210-v2",
     "evidence": "p2 Fig.4는 Transmitter(3탭 SST 드라이버), Receiver(CTLE/VGA, 1탭 speculative DFE, CDR), LC PLL을 모두 포함한 트랜시버 블록도로 tx_rx와 일치, 크롭 깨끗함."
+  },
+  "9830507": {
+    "pdf_sha256": "d3f799db18b6abaa7b393902f4717542c760736c49c45b0180cfab532cba5830",
+    "page": 2,
+    "figure_number": "2",
+    "caption": "Figure 2. Detailed block diagram of 1DQ RX/TX and the connection with memory host.",
+    "bbox": [
+      43.21,
+      286.11,
+      300.44,
+      484.78
+    ],
+    "method": "paddle_layout",
+    "layout_detection": {
+      "label": "image",
+      "confidence": 0.94079,
+      "bbox": [
+        48.208,
+        290.989,
+        295.437,
+        484.113
+      ]
+    },
+    "scope": "trx",
+    "reviewed_on": "2026-10-06",
+    "review_batch": "20261006-paddle-layout",
+    "reviewed_by": "codex_visual_source_review",
+    "evidence": "Source p2 Fig.2 visually compared against the full PDF page and regenerated crop. Complete 1DQ RX/TX architecture and host connection are preserved; preceding Fig.1 caption tail is excluded. Both TX and RX are present. This validates figure identity and crop only, not measurement values."
   }
 }

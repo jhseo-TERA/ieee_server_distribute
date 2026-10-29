@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from sqlalchemy import text
 import web.app as app
-from local_ai_recommendations import select_mode
+from paper_server.ai.recommendations import select_mode
 
 
 def main():

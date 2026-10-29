@@ -1,5 +1,5 @@
 import unittest
-from local_ai_service import grounded_search_plan
+from paper_server.ai.service import grounded_search_plan
 
 
 class SearchPlanTests(unittest.TestCase):

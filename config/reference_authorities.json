@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "scope": "Manually verified publisher evidence for ambiguous first-author name order. Exact reference identity is required; this is not a surname dictionary.",
+  "records": [
+    {
+      "id": "jos-2012-045003-first-author",
+      "title": "A low-power high-swing voltage-mode transmitter",
+      "year": 2012,
+      "journal": "Journal of Semiconductors",
+      "doi": "10.1088/1674-4926/33/4/045003",
+      "first_author": {
+        "given": "Shuai",
+        "family": "Chen"
+      },
+      "source_url": "https://www.jos.ac.cn/article/doi/10.1088/1674-4926/33/4/045003",
+      "verified_on": "2026-10-17",
+      "evidence": {
+        "full_name": "Chen Shuai",
+        "abbreviated_first_author": "Chen S",
+        "locator": "GET CITATION: full and abbreviated citation forms"
+      }
+    },
+    {
+      "id": "ntu-isscc-2008-4523077-first-author",
+      "title": "A 20Gb/s Duobinary Transceiver in 90nm CMOS",
+      "year": 2008,
+      "journal": "ISSCC Dig. Tech. Papers",
+      "doi": "10.1109/ISSCC.2008.4523077",
+      "first_author": {
+        "given": "Jri",
+        "family": "Lee"
+      },
+      "source_url": "https://scholars.lib.ntu.edu.tw/entities/publication/796d6876-fef5-4676-b005-32cae102f73d",
+      "verified_on": "2026-10-17",
+      "evidence": {
+        "full_name": "Jri Lee",
+        "abbreviated_first_author": "Lee, Jri",
+        "locator": "NTU institutional repository: Author(s) explicitly lists Lee, Jri; title, year and pages 102-103 match the citation."
+      }
+    }
+  ]
+}

@@ -7,6 +7,8 @@
 
 ```
 IEEE_Paper_Server/
+├── paper_server/                 # 서비스 코드: ai, recommendation, serdes, parsers, accounts
+├── docs/                         # operations, development, history 문서
 ├── ieee-pdf/                     # IEEE PDF 저장 (숫자키 <article_number>.pdf)
 ├── optica-pdf/                   # Optica PDF 저장 (uri키 <article_number>.pdf)
 ├── py_01_data/00_metadata/       # 원본 Excel (수집 결과)
@@ -102,6 +104,103 @@ Get-ScheduledTaskInfo -TaskName "IEEE_Paper_Server_AutoStart"
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\install_server_startup_task.ps1 -Uninstall
 ```
 
+## 계정 로그인 현황 (`/account/activity`)
+
+`admin`로 로그인하면 메인 메뉴의 **계정 로그인 현황**에서 계정별 최근 로그인,
+최근 활동, 로그인 유지 세션 수와 최근 40개 세션 기록을 확인할 수 있습니다.
+페이지와 API는 `admin`만 조회할 수 있습니다.
+
+- 활동 중은 최근 5분 내 요청 기준입니다. 열린 화면이 보이는 동안 1분마다 활동 신호를 보냅니다.
+- 로그인 유지 세션은 로그아웃·만료·계정 비활성화·비밀번호 변경 여부를 반영합니다.
+  브라우저 종료만으로 세션 종료를 즉시 알 수는 없습니다.
+- 기능 적용 이전의 로그인 시각은 추정하지 않습니다. 기존 쿠키는 첫 요청 시
+  **기존 세션 확인**으로 기록하며, 다음 정상 로그인부터 로그인 시각을 기록합니다.
+- 기록은 계정·시각·세션 상태이며, 조회 API에 쿠키·CSRF 토큰·비밀번호 정보는 포함하지 않습니다.
+- 화면은 30초마다 갱신하며 시각은 한국 시간으로 표시합니다.
+
+기존 DB에는 `scripts/migrations/016_account_activity.sql`을 적용한 뒤 서버를 재시작합니다.
+
+```powershell
+.venv\Scripts\python.exe scripts\migrate_account_activity.py --apply
+```
+
+`ACCOUNT_ACTIVITY_ENABLED=0`이면 기록 기능을 끕니다.
+
+## DesignCon 즐겨찾기 선별
+
+메인 논문 목록의 **DesignCon 전체** 탭에서 PDF를 열어 보고, 관심 논문의 ☆를 눌러
+즐겨찾기에 추가합니다. **★ DesignCon 즐겨찾기** 탭에는 내가 고른 DesignCon만
+표시되며, 탭의 건수도 현재 로그인 계정의 즐겨찾기를 따릅니다. 해당 논문은 매일
+2편 개인 리뷰의 랜덤 후보에 들어갑니다.
+
+- 전체 목록 바로가기: `/?collection=designcon`
+- 선별한 목록 바로가기: `/?collection=designcon-favorites`
+- 탭을 바꾸면 검색 조건을 초기화하고, 선택한 탭 안에서 제목·연도 등의 필터를 적용할 수 있습니다.
+
+## 매일 2편 개인 리뷰 (`/daily-review`)
+
+메인 화면의 **오늘의 2편 · 개인 리뷰**에서 내 즐겨찾기 중 완료하지 않은 논문을
+하루 최대 2편 랜덤으로 추천받습니다. 한국 시간(Asia/Seoul) 날짜별로 선택을 DB에
+저장하므로 새로고침하거나 서버를 다시 켜도 같은 날에는 같은 논문이 표시됩니다.
+미완료 논문은 이전 추천 여부와 관계없이 계속 랜덤 후보에 남습니다.
+
+- **Obsidian에서 리뷰하기**를 누르면 논문별 리뷰 노트를 만들거나 기존 노트를 엽니다.
+  그림 붙여넣기, LaTeX 수식, 텍스트 리뷰는 Obsidian에서 편집합니다.
+- **리뷰 완료 · 다음 추천에서 제외**를 체크하고 **완료 상태 저장**을 누르면 다음 날짜의
+  추천에서 빠집니다. 체크를 해제해 저장하면 다시 후보가 됩니다.
+- 지난 추천 기록에서도 같은 논문의 Obsidian 노트를 열 수 있습니다.
+- 노트 생성·열기와 완료 체크 저장은 **`admin` 계정만** 허용하며 API에서도 확인합니다.
+  기존 추천의 `검토 완료` 피드백과는 별개입니다.
+- 후보가 0~1편이면 해당 수만 보여줍니다. 당일 선택 후 추가한 즐겨찾기는 다음 날부터
+  반영됩니다. 화면을 열 때 추천을 생성하며 별도 예약 작업이나 알림은 필요하지 않습니다.
+
+기존 DB에는 최초 한 번 추가 스키마를 적용하고 서버를 재시작합니다.
+
+```powershell
+.venv\Scripts\python.exe scripts\migrate_daily_review.py --apply
+```
+
+원본 SQL은 `scripts/migrations/015_daily_review.sql`입니다. 완료 상태는 버전 충돌을 검사하며,
+기존 DB에 저장된 웹 메모도 그대로 보존합니다. 상태만 저장하는 요청은 메모를 변경하지 않습니다.
+
+### Obsidian에서 개인 리뷰 편집
+
+`.env`의 `OBSIDIAN_VAULT_PATH`를 기존 `LLM_Wiki` 보관함의 절대 경로로 설정합니다.
+웹에서 **Obsidian에서 리뷰하기**를 처음 누를 때만 `wiki/sources/<학회> <연도> - <짧은 논문 제목>.md`를
+생성하고 `obsidian://open`으로 엽니다. 파일명과 본문 제목에는 학회·연도와 축약한 논문명을 사용하고,
+정식 논문명은 `title` 속성에 보존합니다. 논문 ID와 파일의 연결은 상태 파일로 관리하며
+동명 논문은 구분합니다. 기존 숫자 기반 이름도 계속 열 수 있습니다. 같은 PC에 Obsidian이 설치되어 있어야 합니다.
+브라우저가 앱 열기를 확인하면 Obsidian을 선택합니다.
+
+- 상단 속성은 `title`·`venue`·`year`·`doi`만 넣고 빈 값은 생략합니다.
+  본문은 **핵심 내용 / 그림 수식 / 총평 / 외부 편찬** 네 구역으로 시작합니다.
+  외부 편찬에는 별도 확장 노트의 내부 링크를 모읍니다. 64MB 이내의 PDF는
+  보관함의 `raw/assets/paper-reviews/`에도 내용별 사본을 둡니다.
+  **Acrobat에서 PDF 열기**와 **원본 PDF**는 `file:///` 링크로 외부 기본 PDF 앱을 엽니다.
+  현재 PC의 기본 앱은 Acrobat이며 PC 경로가 바뀌면 이 외부 링크를 확인해야 합니다.
+  원본 파일과 기존 첨부는 수정하지 않습니다.
+- 이미 존재하는 노트는 본문·제목·속성 전체를 그대로 엽니다. 기존 자동 구간 표시가 있어도
+  자유롭게 편집할 수 있습니다. 재열기·완료 상태 저장·기존 반영 스크립트는 노트를 덮어쓰지 않습니다.
+- 그림은 Obsidian 노트에 붙여넣고 수식은 `$…$` 또는 `$$…$$`로 작성합니다.
+  Acrobat 주석을 쓰면 별도 PDF 사본에서 작업하고 Obsidian 노트에 연결해 관리합니다.
+- 웹은 추천과 완료 여부만 관리합니다. Obsidian 본문을 DB로 가져오거나 웹에서 렌더링하지 않으며,
+  완료 체크는 웹 DB에만 저장하며 노트에 상태 속성을 추가하지 않습니다.
+- 이전 웹 메모가 있으면 새 노트를 처음 만들 때 기존 그림·주석 PDF와 함께 옮깁니다.
+  기존 노트가 있으면 덮어쓰지 않으며 웹의 **이전에 웹에 저장한 메모**에서 복사할 수 있습니다.
+- 노트 생성에 실패하면 원인을 표시하고 다시 시도할 수 있습니다. 완료 체크 저장과는 독립적입니다.
+
+노트 목록은 `wiki/paper-reviews.md`, 연결 상태는 `work/paper-server-reviews.json`에 보관합니다.
+보관함의 노트·첨부를 함께 백업하세요. 이전 웹 첨부 폴더 `py_01_data/06_personal_reviews/`와
+`REVIEW_MEDIA_DIR` 설정은 기존 데이터 보존을 위해 유지합니다. 웹 페이지는 PDF 편집 도구나
+Markdown·KaTeX 라이브러리를 불러오지 않습니다.
+
+기존 웹 리뷰를 아직 노트가 없는 논문에 처음 반영하려면 다음 명령을 사용합니다.
+기존 Obsidian 노트는 변경하지 않습니다.
+
+```powershell
+.venv\Scripts\python.exe scripts\sync_personal_reviews_obsidian.py
+```
+
 ## 데이터 요약
 
 - 총 **260,557편** — IEEE 99,066 / Optica 150,771 / Nature 10,720
@@ -136,7 +235,7 @@ papers_nature  -- source_system = 'nature'
   `mode=match|explore|recent|survey|diverse`로 관심사·인접 분야·최신성·SerDes 보강·다양성을 선택한다.
   결과는 DB에 캐시하며, 24시간이 지난 뒤 화면 조회 시 백그라운드로 갱신한다.
   관리자만 `POST /api/recommendations/refresh`로 강제 갱신할 수 있다(CSRF 필수).
-  AI 준비 중이거나 실패하면 SQL 추천을 제공한다. 상세 설정과 제한은 [LOCAL_AI_RESEARCH.md](LOCAL_AI_RESEARCH.md) 참고.
+  AI 준비 중이거나 실패하면 SQL 추천을 제공한다. 상세 설정과 제한은 [LOCAL_AI_RESEARCH.md](docs/development/LOCAL_AI_RESEARCH.md) 참고.
   `011_recommendation_feedback.sql` 적용 후 관리자는 `관심 없음/검토 완료`로 제외하고 기록 목록에서 복원할 수 있다.
 - 웹 UI 검색바에 "퍼블리셔" 드롭다운으로 IEEE/Optica/Nature 필터링 가능 (`/api/papers?publisher=nature` 등).
 - VIEW를 되돌리려면 `DROP VIEW papers_ieee, papers_optica, papers_nature;` — 데이터 손실 없음.
@@ -240,7 +339,7 @@ MySQL 업서트만 수행한다. PDF 다운로드는 일일 작업으로 분리�
 **계정별 즐겨찾기(★)**: 논문·PDF·측정값은 공유하고 즐겨찾기·추천 제외 기록·AI 작업은
 `account_id`로 분리합니다. 관리자와 일반(`member`) 계정은 자신의 즐겨찾기를 수정하며,
 읽기 전용(`viewer`) 계정은 조회만 가능합니다. 공용 측정값 수정·승인은 관리자만 가능합니다.
-계정 생성·이전·백업과 기존 자동화 호환은 [ACCOUNT_ISOLATION.md](ACCOUNT_ISOLATION.md)를 참고하세요.
+계정 생성·이전·백업과 기존 자동화 호환은 [ACCOUNT_ISOLATION.md](docs/development/ACCOUNT_ISOLATION.md)를 참고하세요.
 
 관리자 비밀번호를 새로 설정하거나 교체할 때는 아래 파일을 실행합니다.
 
@@ -341,7 +440,11 @@ scripts\sync_zotero_favorites.bat
   부모만 복구 가능한 Zotero 휴지통으로 이동한다. 휴지통을 자동으로 비우지는 않는다.
 - 신규 대상은 전용 컬렉션에 Zotero 메타데이터 항목으로 생성한다.
   `sync_zotero_pdf_attachments.py --apply --mode linked`가 Paper Server PDF 원본
-  경로를 `linked_file` 자식 첨부로 연결하며 기존 첨부는 그대로 보존한다.
+  경로를 `linked_file` 자식 첨부로 연결한다. 기존 `PaperServerLinkedPDF` 첨부의
+  절대 경로가 바뀌면 DB의 검증된 현재 파일 경로로 복구하며 첨부 키와 주석을
+  보존한다. 사용자 첨부, 저장형 파일, `attachments:` 상대 경로는 변경하지 않는다.
+  새 PC에서 저장형 첨부가 있는 논문도 로컬 원본으로 바로 열려면
+  `--apply --mode linked --ensure-local-links`로 기존 첨부 옆에 로컬 링크를 추가한다.
 - Zotero 데스크톱 앱에서 계정 동기화가 활성화돼 있어야 Web API 변경이 로컬로 내려온다.
 
 두 Zotero 동기화는 별도 고빈도 작업으로 등록하지 않는다. 09:00 또는 19:00 PDF
@@ -386,7 +489,7 @@ Zotero의 `My Library`는 컬렉션을 포함하는 전체 보기이므로 0건�
 
 ## 주간 메타데이터 자동 업데이트
 
-현재 운영 기준은 [METADATA_UPDATE.md](METADATA_UPDATE.md)에 정리되어 있습니다.
+현재 운영 기준은 [METADATA_UPDATE.md](docs/operations/METADATA_UPDATE.md)에 정리되어 있습니다.
 모든 출처는 `config/metadata_sources.json`에서 관리하며, 세 주간 배치는
 `scripts/run_metadata_update.py`를 공통으로 사용합니다.
 
@@ -438,6 +541,104 @@ scripts\update_optica_weekly.bat
 
 ### Optica 오후 확보 실험 (2026-09-30)
 
-오전 최대 13건을 유지하고, 19:00 통합 작업에서 Optica 최대 8건을 추가 처리합니다. 오후 항목 간격은 1,500~2,400초 범위의 난수(random.uniform)이며 분 단위 반올림 없이 대기합니다. Optica 하루 누적 상한은 21건, 전체 상한은 30건입니다. 오후 Optica 예산은 앞선 IEEE/JLT 큐보다 먼저 확보하며, CAPTCHA/속도제한 쿨다운은 유지합니다. 작업 제한 시간은 8시간입니다.
+오전 최대 13건을 유지하고, 19:00 통합 작업에서 Optica 최대 8건을 추가 처리합니다. 오후 항목 간격은 1,500~2,400초 범위의 난수(random.uniform)이며 분 단위 반올림 없이 대기합니다. Optica 하루 누적 시도 상한은 15건(실패 포함), 전체 상한은 30건입니다. 오전에 13건을 시도하면 오후에는 최대 2건만 처리합니다. (2026-10-05 변경) 오후 Optica 예산은 앞선 IEEE/JLT 큐보다 먼저 확보하며, CAPTCHA/속도제한 쿨다운은 유지합니다. 작업 제한 시간은 8시간입니다.
 
 source_name=JLT이고 저장 URL이 IEEE document인 항목은 jlt_ieee 큐로 분리합니다. 별도 로그인·쿨다운·시도 집계를 사용하며 Optica 분류와 저장 키는 유지합니다. Optica URL만 있는 JLT의 DOI→IEEE 매핑은 아직 포함하지 않습니다.
+
+## Connection 논문 지도
+
+`/connection`은 기존 MySQL 논문을 검색·선택해 독립적으로 계산한 연구 지도를 표시합니다.
+저장소·SerDes 메뉴와 각 논문의 `지도` 링크에서 접근하며, 기존 로그인과 계정별
+즐겨찾기·보유 PDF 조회 권한을 그대로 사용합니다. SQL 원본과 스키마는 변경하지 않습니다.
+
+- 제목·저자·DOI·논문 식별자로 검색하고 기준 논문을 선택합니다.
+- 탐색 화면은 왼쪽 Paper List, 중앙 Graph, 오른쪽 Selected Paper로 구성됩니다.
+  왼쪽 목록은 지도 속 논문 선택과 SQL 저장소 검색을 전환하며, 그래프·시간축 계보도·
+  List View·Prior Works·Derivative Works가 같은 상세 패널을 공유합니다.
+- Filters는 제목·저자, 연도 범위, 최소 인용 수, 보유 여부, PDF 여부로 이미 수집한
+  논문을 거릅니다. 기준 논문은 항상 표시하며 필터·보기·정렬 전환은 API를 호출하지 않습니다.
+- 논문별 인용 수는 그래프 점 옆 숫자, Paper List, List View, 선행·후속 목록과 상세에
+  표시합니다. 인용 모드는 OpenAlex 집계와 수집 날짜를 사용하며, OpenAlex 값이 없을
+  때만 SQL의 저장된 IEEE/Crossref 값을 출처와 날짜 그대로 보완합니다. SQL 검색과
+  제목·초록 모드는 저장된 집계를 사용합니다. 미확인과 0회를 구분하고, 집계 출처별
+  차이가 있을 수 있으므로 숫자를 합산하지 않습니다. 표시를 위한 추가 외부 호출은 없습니다.
+- 시간축 계보도는 출판 연도를 수평축에 놓고 **인용된 논문 → 이를 인용한 논문**의
+  방향으로 화살표를 그립니다. 실제 참고문헌 ID에서 만든 `citation_edges`만 사용하며,
+  공통 참고문헌·동시 인용 유사도에서 인용 방향을 추정하지 않습니다. 같은 연도는
+  세로로 분산하고, 연도 미상은 별도 열에 표시합니다. 원본 메타데이터의 연도와
+  인용 순서가 다르더라도 실제 인용 방향을 보존합니다. 가로·세로 스크롤과 기준 논문
+  위치 이동을 지원하며, `view=timeline` 주소로 직접 열 수 있습니다.
+- 계층 기준은 시작 논문으로 초기화하며, 논문 선택 후 **선택 논문으로 설정**을 누르면
+  해당 논문을 중심으로 바꿉니다. 방향은 선행·후속·양쪽, 깊이는 기본 1단계부터 최대
+  3단계까지이며, 계층 표시 상한 30·60편을 독립적으로 조절합니다. 계보도와
+  Prior/Derivative 목록이 같은 설정을 공유합니다. Graph/List의 유사성 지도는 유지합니다.
+  단계는 실제 직접 인용의 최단 경로 길이이며, 순환·중복 관계를 제거하고 기준 논문을
+  항상 포함합니다. 표시 상한 안에서 방향·단계별로 번갈아 선택하고 경로의 중간 논문을
+  함께 포함해, 직접 인용이 많은 기준 논문도 깊은 단계가 드러나게 합니다.
+  2·3단계도 이미 저장된 최대 180편에서만 탐색하고 추가 수집하지 않습니다.
+  필터로 중간 논문이 숨겨져도 가상의 연결선을 만들지 않습니다.
+- 기본 **인용 관계 기반** 모드는 DOI로 OpenAlex 공개 메타데이터(CC0)를 조회합니다.
+  참고문헌 최대 80편, 인용 논문 최대 60편, 관련·공통 참고문헌 후보를 포함해 최대
+  180편을 수집합니다. 작업당 최대 8회 요청, 동시 실행 2개·대기 포함 8개로 제한합니다.
+- 공통 참고문헌의 코사인 유사도(0.65), 수집 범위에서 관찰한 동시 인용(0.35),
+  직접 인용 보너스(0.12)로 연결을 계산합니다. 동시 인용은 적은 관측 수에 감점합니다.
+  기준 논문과 근거가 있는 최대 60편을 표시하고, 주변 연결선은 상위 관계만 남깁니다.
+  제목 일치나 OpenAlex 관련 논문 추천만으로 인용 연결을 만들지 않습니다.
+- 선행 연구는 표시 논문이 인용한 알려진 논문, 후속 연구는 표시 논문을 인용한 알려진
+  논문입니다. 관계 수는 현재 표시 논문과의 관계 수이며 전체 인용 수와 다릅니다.
+  DOI가 있는 외부 논문도 다시 기준으로 탐색할 수 있습니다. 점 크기는 전체 인용 수,
+  색은 출판 연도이며, 전체 인용망·Connected Papers와 동일한 결과를 의미하지 않습니다.
+- 공개 수집 결과만 `py_01_data/connection/`에 30일 캐시합니다(최대 512개 파일).
+  기준 논문 한 편만 수집된 결과는 24시간 후 다음 조회에서 갱신하고,
+  화면에 연결 정보 부족 안내와 제목·초록 지도 전환 버튼을 표시합니다.
+  일부 요청이 실패한 결과는 5분만 캐시해 다음 조회에서 복구할 수 있게 합니다.
+  OpenAlex 참고문헌이 비어 있으면 Crossref를 확인하고, 목록이 없으면 공유 저장소의
+  보유 PDF References를 읽습니다. DOI 또는 제목·저자·연도로 확인한 항목만 연결하며,
+  미확인 항목 수와 PDF 페이지·참고문헌 번호를 표시합니다. PDF 원문과 로컬 경로는
+  그래프 캐시에 넣지 않습니다. OpenAlex 미등재 DOI도 Crossref/SQL로 시작할 수 있습니다.
+  IEEE 후속 인용은 메타데이터 조회 1회 후 인용수가 양수인 경우 IEEE/non-IEEE 목록을
+  각각 1페이지씩 보완합니다(지도당 최대 3회, 자동 페이지 확장·자동 재시도 없음).
+  여러 출처의 인용수를 더하지 않으며 IEEE 집계는 별도 메타데이터로 보존합니다.
+  기존 OpenAlex 캐시는 외부 원본을 재조회하지 않고 보완 정보를 추가해 업그레이드합니다.
+  미확인 참고문헌이 있으면 24시간, IEEE 보완 실패·생략은 1시간 후 다음 조회에서 재검토합니다.
+  즐겨찾기·보유 PDF·SQL 초록은 요청마다 해당 계정 권한으로 결합하며 캐시에 넣지 않습니다.
+
+IEEE 호출 보호 설정은 `.env`의 `IEEE_API_DAILY_LIMIT`(기본 50회/최근 24시간),
+`IEEE_API_MIN_INTERVAL_SECONDS`(기본 2초)입니다. 이는 서버 자체 상한이며 IEEE 계정의
+실제 계약 한도를 의미하지 않습니다. 0회 설정으로 IEEE 원격 요청을 중단할 수 있습니다.
+지도와 `scripts/update_favorite_citations.py`는
+`py_01_data/connection/provider-state.sqlite3`의 같은 지속 카운터와 응답 캐시를 공유합니다.
+성공·실패한 모든 실제 요청을 집계하며, 중복 요청 병합, IEEE 오류 응답 1시간 캐시,
+429/인증 제한 시 최소 1시간 공통 중단을 적용합니다. 다른 기기·외부 프로그램의 키 사용량은
+이 서버 카운터에 포함되지 않습니다. IEEE 기본 메타데이터는 하루, 인용 목록은 7일 캐시합니다.
+현재 운영 키는 사용자 확인(2026-10-17) 기준 초당 10회·하루 200회입니다.
+운영 `.env`는 `IEEE_API_DAILY_LIMIT=200`, `IEEE_API_MIN_INTERVAL_SECONDS=2`로 설정했습니다.
+서버는 최근 24시간 기준으로 집계하고, 기존 누적 카운터는 재시작 후에도 유지합니다.
+  API 키 없이 시작할 수 있고 `OPENALEX_API_KEY`를 서버 환경에 선택적으로 설정할 수 있습니다.
+  OpenAlex 사용량 제한·장애가 발생하면 명시적 오류와 SQL 모드 전환을 제공합니다.
+- **제목·초록 유사도** 모드는 외부 요청 없이 기존 FULLTEXT 후보 최대 500편과 저장
+  초록의 기술 개념을 비교합니다. 초록이 없으면 제목만 사용하며 인용 관계를 뜻하지 않습니다.
+- Connected Papers API·scite·외부 모델 호출은 사용하지 않습니다. 추가 Python 패키지는
+  필요하지 않습니다. OpenAlex에 전송하는 검색값은 선택 논문의 DOI와 공개 논문 ID입니다.
+
+화면은 `web/templates/connection.html`, `web/static/connection.js`,
+`web/static/connection.css`, SQL 조회는 `paper_server/connection.py`, 외부 수집은
+`paper_server/citation_provider.py`, 인용 계산·캐시는 `paper_server/citation_graph.py`에 있습니다.
+읽기 API는 `/api/connection/search`, `/api/connection/graph`입니다. 그래프 API는
+`mode=citation&article_number=...` 또는 `mode=citation&doi=...`를 받습니다.
+수집 중에는 202와 `Retry-After`를 반환하며, 완료 후 같은 요청은 200을 반환합니다.
+`mode=local` 또는 mode 생략은 기존 SQL 모드입니다.
+응답의 `lineage_nodes`·`lineage_edges`는 저장된 주변 논문의 계층 탐색용 데이터입니다.
+깊이·방향·계층 상한·계층 기준 변경은 브라우저에서만 계산합니다. 주소의 `depth`,
+`direction`, `hierarchy_limit`, `root`로 설정을 공유할 수 있습니다.
+API의 `cached_only=1`은 저장 결과만 읽고, 캐시가 없으면 외부 호출 없이 404를 반환합니다.
+운영 서버 재시작 후 `.venv/Scripts/python.exe scripts/verify_connection.py`로
+로그인 경계·검색·지도·정적 파일을 점검합니다. `--citation`은 샘플 DOI의 인용 지도까지,
+`--public`은 기존 공개 도메인까지 확인합니다(외부 공개 메타데이터 캐시는 생성될 수 있습니다).
+`--saved-only`를 함께 사용하면 검증 중에도 추가 외부 메타데이터 조회를 하지 않습니다.
+
+## 코드와 문서 위치
+
+서비스 코드는 `paper_server/` 패키지에 있습니다. 운영 스크립트는 기존 `scripts/` 경로에서 실행하며, 웹 진입점은 `web.app:app`입니다. PDF·DB·캐시 경로는 유지합니다.
+
+문서는 [문서 목차](docs/README.md)에서 찾을 수 있습니다. 문서의 실행 명령은 프로젝트 루트에서 실행합니다.

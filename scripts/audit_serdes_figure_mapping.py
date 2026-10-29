@@ -8,7 +8,7 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT));sys.path.append(str(ROOT/'.venv/Lib/site-packages'))
 from sqlalchemy import text
 import web.app as app_module
-from serdes_figures import FigureStore
+from paper_server.serdes.figures import FigureStore
 
 
 def main():

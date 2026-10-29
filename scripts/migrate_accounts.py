@@ -49,6 +49,10 @@ def migrate(engine, values, new_user, source_user, apply=False, admin_engine=Non
         for statement in ddl.split(';'):
             if statement.strip():
                 conn.execute(text(statement))
+        account_columns = {column['name'] for column in inspect(conn).get_columns('accounts')}
+        if 'favorites_source_account_id' not in account_columns:
+            conn.execute(text((ROOT / 'scripts/migrations/014_viewer_favorites_source.sql')
+                              .read_text(encoding='utf-8')))
         columns = {column['name'] for column in inspect(conn).get_columns('ai_jobs')}
         if 'account_id' not in columns:
             conn.execute(text('ALTER TABLE ai_jobs ADD COLUMN account_id BIGINT UNSIGNED NULL,'

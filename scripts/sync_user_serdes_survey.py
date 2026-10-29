@@ -28,8 +28,8 @@ import openpyxl
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from serdes_metrics import extract_performance, normalize_title, plain_text, title_similarity  # noqa: E402
-from serdes_fom import regenerate_fom  # noqa: E402
+from paper_server.serdes.metrics import extract_performance, normalize_title, plain_text, title_similarity  # noqa: E402
+from paper_server.serdes.fom import regenerate_fom  # noqa: E402
 from scripts.serdes_data_pipeline import (  # noqa: E402
     component_scope_for,
     db_connect,

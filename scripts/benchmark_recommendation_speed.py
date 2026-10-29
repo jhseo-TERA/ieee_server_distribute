@@ -10,8 +10,8 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from sqlalchemy import text
-from local_ai_recommendations import MODEL, RANK_SCHEMA, SYSTEM, dump, validated_ranks
-from recommendation_ranking import compact_request, expand_ranks
+from paper_server.ai.recommendations import MODEL, RANK_SCHEMA, SYSTEM, dump, validated_ranks
+from paper_server.recommendation.ranking import compact_request, expand_ranks
 from scripts.preview_recommendation_ai import PreviewService, PreviewWorker
 import web.app as app
 
@@ -53,7 +53,7 @@ def main():
             return original(request,messages,schema,cancel,*args)
         worker._chat = capture
         try:
-            with patch('local_ai_recommendations.RANKING_MODE', 'legacy'):
+            with patch('paper_server.ai.recommendations.RANKING_MODE', 'legacy'):
                 snap = service.snapshot()
                 service.run('benchmark-capture', {'signature':snap['signature'],**req},event)
         except ValueError as exc:

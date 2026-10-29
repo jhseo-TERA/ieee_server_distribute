@@ -11,8 +11,8 @@ sys.path.insert(0, str(ROOT))
 import requests
 from sqlalchemy import text
 from web.app import app, ADMIN_USERNAME, AUTH_ACCOUNTS, engine
-from recommendation_policy import VERSION, TOTAL_RECOMMENDATIONS, excluded_electrical_multicarrier
-from local_ai_recommendations import RANKING_MODE
+from paper_server.recommendation.policy import VERSION, TOTAL_RECOMMENDATIONS, excluded_electrical_multicarrier
+from paper_server.ai.recommendations import RANKING_MODE
 from scripts.apply_recommendation_migration import snapshot
 
 OUT = ROOT / 'outputs/recommendation_quality/speed_ab'

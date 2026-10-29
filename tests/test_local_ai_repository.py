@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from local_ai_repository import LocalAIRepository, approval_groups, validate_proposal
+from paper_server.ai.repository import LocalAIRepository, approval_groups, validate_proposal
 
 
 def candidate(**updates):

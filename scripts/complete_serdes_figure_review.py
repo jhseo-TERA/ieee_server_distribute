@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.append(str(ROOT / '.venv/Lib/site-packages'))
 import pypdfium2 as pdfium
-from serdes_figures import FigureStore, render_crop
+from paper_server.serdes.figures import FigureStore, render_crop
 
 OUT = ROOT / 'outputs/serdes_figure_complete_20260915'
 BATCH = '20260915-complete'

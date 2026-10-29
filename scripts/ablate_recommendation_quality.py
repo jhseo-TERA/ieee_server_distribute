@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from sqlalchemy import text
 import web.app as app
-from recommendation_policy import FavoriteSimilarity, weighted_profile, SOURCE_PROFILE_CAP
+from paper_server.recommendation.policy import FavoriteSimilarity, weighted_profile, SOURCE_PROFILE_CAP
 
 
 def main():

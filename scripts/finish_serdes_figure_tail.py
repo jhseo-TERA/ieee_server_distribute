@@ -8,7 +8,7 @@ import sys
 
 from complete_serdes_figure_review import ROOT, OUT, read, save, source, source_rect_to_local, document_sheets
 from PIL import Image, ImageDraw
-from serdes_figures import FigureStore
+from paper_server.serdes.figures import FigureStore
 
 
 def main():

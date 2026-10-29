@@ -32,7 +32,7 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from serdes_metrics import (  # noqa: E402
+from paper_server.serdes.metrics import (  # noqa: E402
     LINK_MEDIUM_VERSION,
     SERDES_SQL_PATTERN,
     SERDES_SCREENING_VERSION,
@@ -45,13 +45,13 @@ from serdes_metrics import (  # noqa: E402
     taxonomy,
     title_similarity,
 )
-from serdes_enrichment import (  # noqa: E402
+from paper_server.serdes.enrichment import (  # noqa: E402
     ENERGY_COMPONENT_SCOPE_VERSION,
     LINK_SUBTYPE_VERSION,
     classify_energy_component_scope,
     classify_link_subtype,
 )
-from serdes_implementation_families import (  # noqa: E402
+from paper_server.serdes.implementation_families import (  # noqa: E402
     build_implementation_families,
 )
 
@@ -479,7 +479,7 @@ def upsert_implementation(
     return implementation_id
 
 
-def upsert_measurement(cur, values: dict) -> int:
+def upsert_measurement(cur, values: dict, *, preserve_existing: bool = False) -> int:
     row = {column: values.get(column) for column in MEASUREMENT_COLUMNS}
     for field, default in (
         ("component_scope", "unknown"), ("rate_scope", "unknown"),
@@ -496,11 +496,12 @@ def upsert_measurement(cur, values: dict) -> int:
         for column in MEASUREMENT_COLUMNS
         if column not in {"implementation_id", "operating_point_key"}
     )
+    update_clause = "id=LAST_INSERT_ID(id)" + ("" if preserve_existing else f", {assignments}")
     cur.execute(
         f"""
         INSERT INTO serdes_measurements ({', '.join(MEASUREMENT_COLUMNS)})
         VALUES ({placeholders})
-        ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id), {assignments}
+        ON DUPLICATE KEY UPDATE {update_clause}
         """,
         tuple(row[column] for column in MEASUREMENT_COLUMNS),
     )
@@ -522,6 +523,7 @@ def upsert_evidence(
     review_status: str,
     source_text: str,
     extractor_version: str = EXTRACTOR_VERSION,
+    source_sha256_override: str | None = None,
 ):
     evidence_text = plain_text(evidence_text)
     evidence_sha = sha256_text(evidence_text)
@@ -544,7 +546,7 @@ def upsert_evidence(
         (
             evidence_key, measurement_id, field_name, paper_id, abstract_id,
             source_kind, source_url, source_locator, evidence_text,
-            sha256_text(plain_text(source_text)), evidence_sha, extraction_method,
+            source_sha256_override or sha256_text(plain_text(source_text)), evidence_sha, extraction_method,
             extractor_version, confidence, review_status,
         ),
     )
@@ -1409,6 +1411,98 @@ def screen_venue(
     return stats
 
 
+def import_mineru_evidence(conn, paper_id: int, report: dict) -> dict:
+    """Append immutable PDF candidates; never replace benchmark/reviewed rows."""
+    from paper_server.ai.documents import DocumentStore
+    from paper_server.serdes.mineru import ADAPTER_VERSION, source_sha256
+
+    if report.get("status") != "complete" or report.get("adapter_version") != ADAPTER_VERSION:
+        raise ValueError("Unsupported or incomplete MinerU evidence report")
+    stats = {"paper_id": paper_id, "inserted": 0, "preserved": 0, "evidence": 0}
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id,article_number,title,year,source_name,source_system,pdf_local_path,url "
+                        "FROM papers WHERE id=%s", (paper_id,))
+            paper = cur.fetchone()
+            if not paper:
+                raise ValueError(f"Unknown paper_id {paper_id}")
+            pdf = DocumentStore(ROOT).resolve_path(paper)
+            if source_sha256(pdf) != report.get("source_sha256"):
+                raise ValueError("MinerU report does not match this paper's current PDF")
+            cur.execute("SELECT implementation_id FROM serdes_implementation_papers "
+                        "WHERE paper_id=%s ORDER BY implementation_id", (paper_id,))
+            linked = cur.fetchall()
+            # A multi-implementation paper must not attach unreviewed evidence
+            # to an arbitrary variant. Keep a separate paper-evidence container.
+            implementation_id = linked[0]["implementation_id"] if len(linked) == 1 else upsert_implementation(
+                cur, f"mineru-paper:{paper_id}", paper, paper["title"], clean_number(paper.get("year")),
+                paper.get("source_name"), "pdf_evidence", 0.5)
+            for candidate in report.get("candidates", []):
+                key = f"mineru:{candidate['candidate_id']}"
+                # Idempotence preserves any human review of an earlier candidate.
+                cur.execute("SELECT id,review_status FROM serdes_measurements "
+                            "WHERE implementation_id=%s AND operating_point_key=%s FOR UPDATE",
+                            (implementation_id, key))
+                if cur.fetchone():
+                    stats["preserved"] += 1
+                    continue
+                values = performance_measurement(
+                    candidate["performance"], implementation_id=implementation_id,
+                    operating_point_key=key, reference_title=paper["title"],
+                    publication_year=clean_number(paper.get("year")),
+                    publication_name=paper.get("source_name"), source_kind="pdf",
+                    component_scope=candidate.get("energy_component_scope") or "unknown",
+                    overall_confidence=0.5, review_status="needs_review")
+                measurement_id = upsert_measurement(cur, values, preserve_existing=True)
+                stats["inserted"] += 1
+                location = f"p{candidate['page']}:{candidate['block_id']}"
+                if candidate.get("table_row") is not None:
+                    location += f":r{candidate['table_row']}:c{candidate['table_column']}"
+                if candidate.get("bbox"):
+                    location += ":bbox=" + ",".join(f"{v:.2f}" for v in candidate["bbox"])
+                context = {name: candidate[name] for name in (
+                    "conditions", "flags", "table_header", "table_cells", "caption", "footnotes")
+                    if candidate.get(name)}
+                evidence = candidate["text"] + "\nContext: " + json.dumps(context, ensure_ascii=False)
+                fields = list(candidate["performance"].get("evidence", {}))
+                fields += [f"{field}_candidate" for field in
+                           candidate["performance"].get("ambiguous_fields", [])]
+                for field in dict.fromkeys(fields):
+                    upsert_evidence(
+                        cur, measurement_id, field, evidence, "pdf",
+                        (canonical_ieee_url(paper.get("article_number"), paper.get("url"))
+                         if paper.get("source_system") == "ieee" else paper.get("url")), location[:120], paper_id,
+                        None, f"mineru_{report['tier']}", 0.5, "needs_review", "",
+                        extractor_version=ADAPTER_VERSION,
+                        source_sha256_override=report["source_sha256"])
+                    stats["evidence"] += 1
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    return stats
+
+
+def extract_mineru_paper(conn, paper_id: int, *, tier="basic", max_pages=30,
+                         timeout=900, force=False, cache_only=False) -> dict:
+    from paper_server.ai.documents import DocumentStore
+    from paper_server.serdes.mineru import extract_mineru_evidence
+    with conn.cursor() as cur:
+        cur.execute("SELECT id,article_number,source_system,pdf_local_path FROM papers WHERE id=%s",
+                    (paper_id,))
+        paper = cur.fetchone()
+    if not paper:
+        raise ValueError(f"Unknown paper_id {paper_id}")
+    pdf = DocumentStore(ROOT).resolve_path(paper)
+    report = extract_mineru_evidence(pdf, tier=tier, max_pages=max_pages,
+                                     timeout=timeout, force=force)
+    result = {"paper_id": paper_id, **report["stats"], "cache_dir": report["cache_dir"],
+              "tier": report["tier"], "review_status": "needs_review"}
+    if not cache_only:
+        result["import"] = import_mineru_evidence(conn, paper_id, report)
+    return result
+
+
 def build_parser():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--migrate-only", action="store_true")
@@ -1440,6 +1534,14 @@ def build_parser():
     parser.add_argument("--extract-titles", action="store_true")
     parser.add_argument("--fetch-abstracts", type=int, metavar="LIMIT")
     parser.add_argument("--extract-abstracts", action="store_true")
+    parser.add_argument("--extract-mineru", type=int, metavar="PAPER_ID",
+                        help="Parse a local paper PDF into review-only performance evidence")
+    parser.add_argument("--mineru-tier", choices=("basic", "flash"), default="basic")
+    parser.add_argument("--mineru-max-pages", type=int, default=30)
+    parser.add_argument("--mineru-timeout", type=int, default=900)
+    parser.add_argument("--mineru-force", action="store_true")
+    parser.add_argument("--mineru-cache-only", action="store_true",
+                        help="Prepare the evidence/UI cache without inserting SQL candidates")
     parser.add_argument("--extract-venue", metavar="VENUE")
     parser.add_argument("--screened-only", action="store_true")
     parser.add_argument("--venue", help="Limit abstract acquisition to one exact venue")
@@ -1483,7 +1585,7 @@ def main():
         args.build_implementation_families,
         args.import_wlink, args.extract_titles,
         args.fetch_abstracts is not None, args.extract_abstracts,
-        args.screen_venue,
+        args.screen_venue, args.extract_mineru is not None,
     ))
     if not actions:
         parser.print_help()
@@ -1500,6 +1602,11 @@ def main():
             if not path.is_absolute():
                 path = ROOT / path
             print("WLink:", import_wlink(conn, path, args.match_threshold))
+        if args.extract_mineru is not None:
+            print("MinerU:", json.dumps(extract_mineru_paper(
+                conn, args.extract_mineru, tier=args.mineru_tier,
+                max_pages=args.mineru_max_pages, timeout=args.mineru_timeout,
+                force=args.mineru_force, cache_only=args.mineru_cache_only), ensure_ascii=False))
         if args.extract_titles:
             print("Titles:", extract_titles(conn, screened_only=args.screened_only))
         if args.fetch_abstracts is not None:

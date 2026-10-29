@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="논문 목록, 인용 지도와 시간축 계보도로 관련 연구를 탐색합니다.">
+  <title>Connection · Paper Repository</title>
+  <script src="{{ url_for('static',filename='account_presence.js') }}" data-csrf="{{ csrf_token }}" defer></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='connection.css') }}">
+  <script src="{{ url_for('static', filename='connection-lineage.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='connection.js') }}" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#paper-query">논문 검색으로 이동</a>
+  <header class="site-header">
+    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">P</span>Paper Repository<span class="brand-divider">/</span><strong>Connection</strong></a>
+    <nav class="site-nav" aria-label="주요 메뉴"><a href="/">Repository</a><a href="/serdes">SerDes</a><a href="/connection" aria-current="page">Connection</a><a href="/ai">AI Research</a></nav>
+    <div class="account"><span>{{ username }}</span><form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit">로그아웃</button></form></div>
+  </header>
+  <main>
+    <div class="research-header">
+      <div class="research-title"><span class="eyebrow" id="method-badge">공개 인용 관계 지도</span><h1 id="page-title">논문을 선택해 연구의 연결을 탐색하세요</h1><p id="method-summary">SQL 저장소에서 시작하는 연구 지도</p></div>
+      <div class="research-options"><label for="graph-mode">연결 방식<select id="graph-mode"><option value="citation">인용 관계 기반</option><option value="local">제목·초록 유사도</option></select></label><label for="map-limit">논문 수<select id="map-limit"><option value="10">10</option><option value="20">20</option><option value="30" selected>30</option><option value="60">60</option></select></label></div>
+    </div>
+    <div class="workspace">
+      <aside class="search-panel panel" aria-labelledby="search-title">
+        <div class="panel-heading"><h2 id="search-title">Paper List <span id="paper-list-count">0</span></h2></div>
+        <div class="left-tabs" role="group" aria-label="논문 목록 선택"><button id="list-mode-graph" type="button" aria-pressed="false">지도 속 논문</button><button id="list-mode-search" type="button" aria-pressed="true">저장소 검색</button></div>
+        <div id="graph-paper-panel" hidden><label class="sort-label" for="paper-sort">정렬<select id="paper-sort"><option value="similarity">관련도</option><option value="year">최신 연도</option><option value="citations">인용 수</option></select></label><p class="list-note" id="graph-list-status"></p><div id="graph-paper-list" class="search-results" aria-label="지도 속 논문"></div></div>
+        <div id="library-search-panel">
+          <form id="search-form" class="search-form" role="search"><label for="paper-query">제목 · 저자 · DOI</label><div class="search-field"><input id="paper-query" type="search" placeholder="논문 제목 또는 DOI 검색" autocomplete="off" maxlength="200"><button type="submit" aria-label="논문 검색">검색</button></div></form>
+          <p class="list-note" id="search-status" role="status">저장소를 불러오는 중…</p><div id="search-results" class="search-results" aria-label="검색된 논문" aria-busy="true"></div>
+        </div>
+        <div class="search-footer">논문 선택 → 상세정보 · 다시 탐색 → 새 지도</div>
+      </aside>
+      <section class="map-panel panel" aria-labelledby="map-title">
+        <h2 id="map-title" class="sr-only">연구 연결 지도</h2>
+        <div class="view-toolbar"><div class="view-tabs" role="tablist" aria-label="관련 연구 보기">
+          <button type="button" id="tab-map" role="tab" aria-selected="true" aria-controls="view-map" tabindex="0">Graph</button>
+          <button type="button" id="tab-timeline" role="tab" aria-selected="false" aria-controls="view-timeline" tabindex="-1">시간축 계보도</button>
+          <button type="button" id="tab-list" role="tab" aria-selected="false" aria-controls="view-list" tabindex="-1">List View</button>
+          <button type="button" id="tab-prior" role="tab" aria-selected="false" aria-controls="view-prior" tabindex="-1">Prior Works <span id="prior-count">0</span></button>
+          <button type="button" id="tab-derivative" role="tab" aria-selected="false" aria-controls="view-derivative" tabindex="-1">Derivative Works <span id="derivative-count">0</span></button>
+        </div><button type="button" id="toggle-filters" class="filter-button" aria-expanded="false" aria-controls="filter-panel">Filters <span id="filter-count">0</span></button></div>
+        <div id="lineage-controls" class="lineage-controls" hidden>
+          <div class="lineage-root"><span>계층 기준</span><strong id="lineage-root-title"></strong><button id="lineage-use-selected" type="button" class="text-button" disabled>선택 논문으로 설정</button><button id="lineage-reset-root" type="button" class="text-button">시작 논문으로</button></div>
+          <div class="lineage-options"><label for="lineage-direction">방향<select id="lineage-direction"><option value="both">선행 + 후속</option><option value="prior">선행만</option><option value="derivative">후속만</option></select></label><label for="lineage-depth">깊이<select id="lineage-depth"><option value="1">1단계 · 직접 인용</option><option value="2">2단계까지</option><option value="3">3단계까지</option></select></label><label for="lineage-limit">계층 표시 상한<select id="lineage-limit"><option value="30">30편</option><option value="60">60편</option></select></label></div>
+          <p id="lineage-status" role="status">계보도와 Prior/Derivative 목록에 적용합니다. 저장된 인용 범위만 사용합니다.</p>
+        </div>
+        <form id="filter-panel" class="filter-panel" hidden aria-label="표시 논문 필터">
+          <label>제목 · 저자<input id="filter-query" type="search" placeholder="현재 논문 안에서 찾기" maxlength="200"></label>
+          <label>시작 연도<input id="filter-year-from" type="number" min="1000" max="2200" placeholder="전체"></label><label>종료 연도<input id="filter-year-to" type="number" min="1000" max="2200" placeholder="전체"></label>
+          <label>최소 인용 수<input id="filter-citations" type="number" min="0" placeholder="0"></label>
+          <label>저장소 보유<select id="filter-library"><option value="all">전체</option><option value="local">보유 논문</option><option value="external">외부 논문</option></select></label>
+          <label class="checkbox-label"><input id="filter-pdf" type="checkbox">PDF 보유</label><button id="reset-filters" class="text-button" type="button">초기화</button>
+          <p id="filter-status" role="status">필터는 수집된 논문에 적용합니다. 기준 논문은 항상 표시합니다.</p>
+        </form>
+        <div id="citation-empty" class="citation-empty" role="status" hidden><strong>현재 연결할 인용 데이터가 없습니다</strong><p id="citation-empty-description"></p><button id="use-local-empty" class="button secondary" type="button" hidden>제목·초록 유사 논문 보기</button></div>
+        <div id="view-map" class="view-panel" role="tabpanel" aria-labelledby="tab-map">
+          <div class="map-stage hide-labels" id="map-stage" aria-busy="false">
+            <svg id="research-map" viewBox="0 0 900 700" role="group" aria-label="연구 연결 지도. 논문 점을 선택하면 상세정보를 확인할 수 있습니다." tabindex="0"><g id="map-viewport"><g id="map-edges"></g><g id="map-nodes"></g></g></svg>
+            <div id="map-overlay" class="map-overlay"><div class="empty-orbit" aria-hidden="true"><span></span><i></i><b></b></div><h3 id="map-state-title">어떤 논문에서 시작할까요?</h3><p id="map-state-description">왼쪽 저장소에서 논문을 찾아 선택하세요.</p><button id="map-retry" class="button secondary" type="button" hidden>다시 시도</button><button id="use-local" class="button secondary" type="button" hidden>이 논문의 제목·초록 지도로 전환</button></div>
+            <div class="map-legend" id="map-legend"></div><div class="map-controls" aria-label="지도 보기 조절"><button id="zoom-in" type="button" aria-label="지도 확대">+</button><button id="zoom-out" type="button" aria-label="지도 축소">−</button><button id="reset-view" type="button" aria-label="지도 전체 보기">⊡</button><button id="toggle-labels" type="button" aria-pressed="false" aria-label="모든 논문 제목 표시">Aa</button></div><div class="map-hint" id="map-hint">드래그로 이동 · 휠로 확대 · 점을 선택해 상세 보기</div>
+          </div>
+          <details id="node-list-section" class="node-list-section" hidden><summary>연결 논문 목록 <span id="node-list-count"></span></summary><div id="node-list" class="node-list"></div></details>
+        </div>
+        <div id="view-timeline" class="view-panel" role="tabpanel" aria-labelledby="tab-timeline" hidden><p class="view-explainer">출판 연도에 따라 배치합니다. 화살표는 <strong>인용된 논문 → 이를 인용한 논문</strong>입니다. 같은 연도 안의 순서는 시간 순서를 뜻하지 않습니다. <button id="timeline-focus" type="button" class="text-button">기준 논문 위치로</button></p><div id="timeline-scroll" class="timeline-scroll" tabindex="0" role="region" aria-label="가로로 스크롤하는 인용 계보도"><svg id="timeline-map" role="group" aria-label="연도별 직접 인용 계보도"><defs><marker id="citation-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10Z" fill="#8494a1"></path></marker></defs><g id="timeline-axis"></g><g id="timeline-edges"></g><g id="timeline-nodes"></g></svg></div><p id="timeline-status" class="view-explainer" role="status"></p></div>
+        <div id="view-list" class="view-panel" role="tabpanel" aria-labelledby="tab-list" hidden><div class="table-scroll"><table class="papers-table"><thead><tr><th scope="col">논문</th><th scope="col">연도</th><th scope="col">인용 수</th><th scope="col">저장소</th></tr></thead><tbody id="table-papers"></tbody></table></div><p id="table-status" class="view-explainer" role="status"></p></div>
+        <div id="view-prior" class="view-panel works-view" role="tabpanel" aria-labelledby="tab-prior" hidden><p class="view-explainer">계층 기준 논문에서 참고문헌 방향으로 따라간 연구입니다. 단계는 직접 인용 화살표를 따라간 최소 횟수입니다.</p><div id="prior-list" class="works-list"></div></div>
+        <div id="view-derivative" class="view-panel works-view" role="tabpanel" aria-labelledby="tab-derivative" hidden><p class="view-explainer">계층 기준 논문을 인용한 연구와 그 후속 연구입니다. 저장된 범위에서 선택한 깊이까지만 탐색합니다.</p><div id="derivative-list" class="works-list"></div></div>
+        <div class="map-caption"><p id="map-status" role="status">논문을 선택하면 지도를 구성합니다.</p><span id="graph-count">0 papers</span></div>
+        <details class="coverage-details"><summary><span id="graph-provider">OpenAlex</span> · 데이터와 연결 방식</summary><p id="coverage-note">공통 참고문헌과 동시 인용으로 관련성을 계산합니다. 계보도는 실제 직접 인용 기록을 사용합니다.</p></details>
+      </section>
+      <aside class="details-panel panel" aria-labelledby="details-title"><div class="panel-heading"><h2 id="details-title">Selected Paper</h2></div><div id="details-empty" class="details-empty"><h3>논문을 선택하세요</h3><p>지도나 논문 목록에서 선택하면 초록과 인용 근거가 여기에 표시됩니다.</p></div>
+        <article id="paper-details" hidden><div class="detail-tags" id="detail-tags"></div><h3 id="detail-title"></h3><p id="detail-authors" class="detail-authors"></p><dl class="detail-meta"><div><dt>발행 연도</dt><dd id="detail-year"></dd></div><div><dt>출처</dt><dd id="detail-source"></dd></div><div><dt>논문 ID</dt><dd id="detail-id"></dd></div><div><dt>비교 데이터</dt><dd id="detail-basis"></dd></div><div id="citation-count-row"><dt>인용 수</dt><dd><span id="detail-citations"></span><small id="detail-citation-meta"></small></dd></div></dl>
+          <div class="detail-actions"><button id="recenter-paper" class="button primary" type="button">이 논문으로 다시 탐색 ↗</button><a id="detail-pdf" class="button secondary" target="_blank" rel="noopener noreferrer" hidden>PDF 원문 열기 ↗</a><a id="detail-doi" class="doi-link" target="_blank" rel="noopener noreferrer" hidden>DOI 페이지 ↗</a></div>
+          <details id="abstract-section" class="abstract-section" open><summary>Abstract · 초록</summary><p id="detail-abstract"></p></details>
+          <div id="similarity-section" class="similarity-section"><div><span id="similarity-label">시작 논문과 유사도</span><strong id="detail-score"></strong></div><div class="score-track"><span id="detail-score-fill"></span></div></div><div id="relation-section" class="relation-section" hidden><h4>시작 논문과 연결 근거</h4><p id="detail-relation"></p></div><div id="terms-section" class="terms-section"><h4>시작 논문과 공통 키워드</h4><div id="detail-terms" class="term-chips"></div></div>
+        </article><details class="method-note"><summary>지도 읽는 방법</summary><p id="method-note-primary">점의 크기는 인용 수, 색은 발행 연도입니다.</p><p id="method-note-secondary">수집된 주변 논문에서 계산한 지도입니다.</p></details>
+      </aside>
+    </div>
+  </main><noscript><p class="noscript-note">논문 검색과 지도 탐색에는 JavaScript가 필요합니다.</p></noscript>
+</body>
+</html>

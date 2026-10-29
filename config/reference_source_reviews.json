@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "scope": "Exact PDF/page/reference/source hashes reviewed from original images. Not automatic OCR, a surname dictionary, or a rule that guesses missing glyphs.",
+  "records": [
+    {
+      "id": "pdf-review-p052-ref-1",
+      "pdf": "ieee-pdf/8706088.pdf",
+      "pdf_sha256": "adb0d9a78d623229111088639ec882a67f9e203ff59410cf896af7c86416e795",
+      "page": 2,
+      "number": 1,
+      "raw_sha256": "9274ce37d0138e09711ecda9e46c8013ec184f0b75de03a0e4339982fbe415dd",
+      "year": 2015,
+      "field": "author",
+      "before": "DÿAmbrosia",
+      "after": "D'Ambrosia",
+      "reviewed_on": "2026-10-17",
+      "evidence": {
+        "kind": "source_pdf_image_review",
+        "image": "outputs/reference_validation_100_20261017/sources/p052/page-002.png",
+        "image_sha256": "50283f17ec94e916517f8cecfda8609f9f4ad13195b4c75f0f9839df03b62cb1",
+        "observation": "Source image shows J. D’ Ambrosia. The extracted ÿ is an encoding error for the apostrophe, not a real diaeresis y."
+      },
+      "resolved_warnings": [
+        "personal_name_glyph_requires_review"
+      ],
+      "first_author_name": "J. D'Ambrosia"
+    },
+    {
+      "id": "pdf-review-p057-ref-6",
+      "pdf": "ieee-pdf/4708768.pdf",
+      "pdf_sha256": "095608d5f34aedbbf57462206421bd797c41ced1be867136514f7fdf03ac9718",
+      "page": 4,
+      "number": 6,
+      "raw_sha256": "f2e4c3c51ed534ac1d17dd176fb49686a8a969b926ebb59e291ac5c1594e37ad",
+      "year": 2005,
+      "field": "title_display",
+      "before": "An 80-Gb/s 231-1 Pseudorandom Binary Sequence Generator in SiGe BiCMOS Technology",
+      "after": "An 80-Gb/s 2^31-1 Pseudorandom Binary Sequence Generator in SiGe BiCMOS Technology",
+      "reviewed_on": "2026-10-17",
+      "evidence": {
+        "kind": "source_pdf_image_review",
+        "image": "outputs/reference_validation_100_20261017/sources/p057/page-004.png",
+        "image_sha256": "cd153b131ffc33dbf9b2e2a993c41ebc8e743982189a5a42cd0fe115d0e86859",
+        "observation": "Source image shows raised 31 in 2^31-1. User requested caret notation; retain original raw/title and correct display only."
+      },
+      "resolved_warnings": [
+        "possible_lost_scientific_glyph"
+      ]
+    },
+    {
+      "id": "pdf-review-p085-ref-19",
+      "pdf": "ieee-pdf/6872604.pdf",
+      "pdf_sha256": "cd11119ed6f5a6b18a3b8d0f9ac44587712d1477990db25d6f37417a0e102f90",
+      "page": 14,
+      "number": 19,
+      "raw_sha256": "11f038f53b19c59587b571f1a45cc90814091decfd05723edb226a51500a6d07",
+      "year": 2009,
+      "field": "title_display",
+      "before": "A fully integrated 0.13- m CMOS 40-Gb/s serial link transceiver",
+      "after": "A fully integrated 0.13-um CMOS 40-Gb/s serial link transceiver",
+      "reviewed_on": "2026-10-17",
+      "evidence": {
+        "kind": "source_pdf_image_review",
+        "image": "outputs/reference_validation_100_20261017/sources/p085/page-014.png",
+        "image_sha256": "dd310c089fbf2e9ac0f5a0cd2230c87c3824d93e693378b1ea8bb31c4275b1ee",
+        "observation": "Reference 19 visibly prints 0.13-μm. Restore the missing micro prefix as ASCII u per the user display policy; preserve raw/title. This is an exact reviewed repair, not a rule guessing missing units."
+      },
+      "resolved_warnings": [
+        "possible_lost_scientific_glyph"
+      ]
+    }
+  ]
+}

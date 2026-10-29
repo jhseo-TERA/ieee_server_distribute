@@ -9,9 +9,9 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
 from scripts.benchmark_recommendation_speed import OUT,wait_idle
 from scripts.preview_recommendation_ai import PreviewWorker
-from recommendation_pair_cache import PairRanker,MemoryPairCache,contextualize,pair_input
-from local_ai_recommendations import MODEL,dump,SYSTEM,validated_ranks
-from recommendation_ranking import compact_request,expand_ranks
+from paper_server.recommendation.pair_cache import PairRanker,MemoryPairCache,contextualize,pair_input
+from paper_server.ai.recommendations import MODEL,dump,SYSTEM,validated_ranks
+from paper_server.recommendation.ranking import compact_request,expand_ranks
 from web.app import _title_terms
 
 

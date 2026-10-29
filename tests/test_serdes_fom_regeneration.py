@@ -1,6 +1,6 @@
 import unittest
 
-from serdes_fom import (
+from paper_server.serdes.fom import (
     FOM_ENERGY_BASIS,
     calculate_energy_pj_bit,
     evaluate_measurement,

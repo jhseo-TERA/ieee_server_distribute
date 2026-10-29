@@ -20,12 +20,12 @@ def create_ai_blueprint(engine, root, csrf_token):
             raise PermissionError("로컬 AI 기능이 비활성화되어 있습니다.")
         with factory_lock:
             if "service" not in state:
-                from local_ai_service import LocalAIService
-                from local_ai_runtime import OllamaClient
-                from local_ai_documents import DocumentStore
-                from local_ai_repository import LocalAIRepository
-                from local_ai_recommendations import RecommendationService
-                from local_ai_survey import SurveyAIService
+                from paper_server.ai.service import LocalAIService
+                from paper_server.ai.runtime import OllamaClient
+                from paper_server.ai.documents import DocumentStore
+                from paper_server.ai.repository import LocalAIRepository
+                from paper_server.ai.recommendations import RecommendationService
+                from paper_server.ai.survey import SurveyAIService
                 state["service"] = LocalAIService(
                     LocalAIRepository(engine),
                     OllamaClient(os.getenv("LOCAL_AI_OLLAMA_URL", "http://127.0.0.1:11434")),
@@ -102,7 +102,7 @@ def create_ai_blueprint(engine, root, csrf_token):
 
     @bp.route("/api/ai/search")
     def ai_search():
-        from local_ai_service import FILTER_KEYS
+        from paper_server.ai.service import FILTER_KEYS
         filters = {k: request.args[k] for k in FILTER_KEYS if request.args.get(k) not in (None, "")}
         query = request.args.get("q", "")
         if len(query) > 500:

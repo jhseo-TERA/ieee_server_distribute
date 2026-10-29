@@ -30,7 +30,7 @@ from scripts.serdes_data_pipeline import (
     classify_measurement_scopes, build_implementation_families,
 )
 from scripts.sync_user_serdes_survey import audit_and_sync, SURVEY_WORKBOOK_NAME
-from serdes_fom import regenerate_fom
+from paper_server.serdes.fom import regenerate_fom
 
 CANONICAL_VENUES = {
     "OJSSC", "JSSC", "SSCL", "SSC-M", "PTL", "MWTL", "JLT", "ISSCC",

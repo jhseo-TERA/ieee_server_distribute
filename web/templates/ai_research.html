@@ -6,6 +6,7 @@
   <meta name="description" content="로컬 AI로 논문을 비교하고, 원문 근거와 함께 SerDes 서베이를 검토합니다.">
   <meta name="csrf-token" content="{{ csrf_token }}">
   <title>AI Research Desk · Paper Repository</title>
+  <script src="{{ url_for('static',filename='account_presence.js') }}" data-csrf="{{ csrf_token }}" defer></script>
   <link rel="stylesheet" href="{{ url_for('static', filename='ai_research.css') }}">
   <script src="{{ url_for('static', filename='ai_research.js') }}" defer></script>
 </head>
@@ -14,7 +15,7 @@
   <header class="topbar">
     <a class="brand" href="/ai"><span class="brand-mark" aria-hidden="true">AI</span> Research Desk</a>
     <nav aria-label="주요 메뉴">
-      <a href="/">Paper Repository</a><a href="/serdes">SerDes Survey</a>
+      <a href="/">Paper Repository</a><a href="/serdes">SerDes Survey</a><a href="/connection">Connection 지도</a>
       <span class="account">{{ username }} · {{ '관리자' if can_edit else ('일반 계정' if role == 'member' else '읽기 전용') }}</span>
       <a href="/account/password">비밀번호 변경</a>
       <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button class="logout" type="submit">로그아웃</button></form>

@@ -17,8 +17,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import requests
 from sqlalchemy import text
 from web.app import app, engine, ADMIN_USERNAME, build_serdes_performance
-from local_ai_repository import LocalAIRepository
-from local_ai_survey import SurveyAIService, validate_filters
+from paper_server.ai.repository import LocalAIRepository
+from paper_server.ai.survey import SurveyAIService, validate_filters
 
 
 def counts():

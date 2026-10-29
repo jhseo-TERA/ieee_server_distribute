@@ -9,10 +9,10 @@ from sqlalchemy.pool import StaticPool
 from werkzeug.security import generate_password_hash
 
 import web.app as server
-from account_store import AccountStore, account_scope, current_account_id
-from local_ai_recommendations import RecommendationService
-from local_ai_repository import LocalAIRepository
-from recommendation_feedback import FeedbackStore
+from paper_server.accounts import AccountStore, account_scope, current_account_id
+from paper_server.ai.recommendations import RecommendationService
+from paper_server.ai.repository import LocalAIRepository
+from paper_server.recommendation.feedback import FeedbackStore
 
 
 class AccountIsolationTests(unittest.TestCase):
@@ -30,7 +30,8 @@ class AccountIsolationTests(unittest.TestCase):
         with self.engine.begin() as conn:
             for ddl in [
                 'CREATE TABLE accounts (id INTEGER PRIMARY KEY,username TEXT UNIQUE,password_hash TEXT,'
-                'role TEXT,is_active INT,must_change_password INT DEFAULT 0,session_version INT DEFAULT 1,legacy_owner INT DEFAULT 0)',
+                'role TEXT,is_active INT,must_change_password INT DEFAULT 0,session_version INT DEFAULT 1,legacy_owner INT DEFAULT 0,'
+                'favorites_source_account_id INT)',
                 'CREATE TABLE papers (id INTEGER PRIMARY KEY,article_number TEXT UNIQUE,title TEXT,authors TEXT,'
                 'year TEXT,source_name TEXT,source_type TEXT,source_system TEXT,issue TEXT,url TEXT,pdf_available INT,'
                 'is_favorite INT,citation_count INT,citation_source TEXT,citation_updated_at TEXT)',
@@ -53,7 +54,7 @@ class AccountIsolationTests(unittest.TestCase):
                     dict(id=i, article=str(i), title=f'Paper {i}', fav=int(i == 1)))
             conn.execute(text('INSERT INTO account_favorites(account_id,paper_id) VALUES (1,1),(2,1),(3,1)'))
         self.store = AccountStore(self.engine)
-        self.config = patch.dict(server.app.config, ACCOUNT_AUTH_ENABLED=True, TESTING=True, SESSION_COOKIE_SECURE=False)
+        self.config = patch.dict(server.app.config, ACCOUNT_AUTH_ENABLED=True, TESTING=True, SESSION_COOKIE_SECURE=False, ACCOUNT_ACTIVITY_ENABLED=False)
         self.patches = [self.config, patch.object(server, 'engine', self.engine),
                         patch.object(server, 'accounts', self.store), patch.object(server, '_account_recommendations', {})]
         for item in self.patches:
@@ -124,6 +125,21 @@ class AccountIsolationTests(unittest.TestCase):
         self.assertEqual(self.admin.get('/api/papers?pdf_status=invalid').status_code, 400)
         self.assertEqual(self.admin.get('/api/papers?fav_status=invalid').status_code, 400)
 
+    def test_designcon_favorites_count_and_list_follow_each_account(self):
+        with self.engine.begin() as conn:
+            conn.execute(text("UPDATE papers SET source_system='designcon',source_name='DesignCon' WHERE id IN (1,2)"))
+        self.store.set_favorites(2, ['1'], False)
+        self.store.set_favorites(2, ['2'], True)
+        with self.engine.begin() as conn:
+            conn.execute(text('UPDATE accounts SET favorites_source_account_id=1 WHERE id=3'))
+        for client, expected in ((self.admin, '1'), (self.member, '2'), (self.reader, '1')):
+            meta = client.get('/api/meta').json
+            self.assertEqual(meta['designcon_total'], 2)
+            self.assertEqual(meta['designcon_fav_total'], 1)
+            listing = client.get('/api/papers?publisher=designcon&fav_status=favorite').json
+            self.assertEqual([row['article_number'] for row in listing['items']], [expected])
+            self.assertEqual(client.get('/api/papers?publisher=designcon').json['total'], 2)
+
     def test_bulk_add_and_failed_batch_are_atomic(self):
         result = self.post(self.member, '/api/favorites/bulk', {'article_numbers': ['1', '2', '2']})
         self.assertEqual(result.status_code, 200)
@@ -156,6 +172,93 @@ class AccountIsolationTests(unittest.TestCase):
         response = self.member.get('/')
         self.assertIn(b'const CAN_EDIT_FAVORITES = true', response.data)
         self.assertEqual(response.headers['Cache-Control'], 'no-store')
+
+    def link_reader(self):
+        with self.engine.begin() as conn:
+            conn.execute(text('UPDATE accounts SET favorites_source_account_id=1 WHERE id=3'))
+            conn.execute(text('DELETE FROM account_favorites WHERE account_id=3'))
+
+    def test_linked_reader_sees_live_favorites_and_cannot_modify_source(self):
+        self.link_reader()
+        self.assertEqual(self.reader.get('/api/meta').json['fav_total'], 1)
+        self.post(self.admin, '/api/favorites/bulk', {'article_numbers': ['2']})
+        self.assertEqual(self.reader.get('/api/meta').json['fav_total'], 2)
+        result = self.reader.get('/api/papers?fav_only=1&account_id=2').json
+        self.assertEqual({p['article_number'] for p in result['items']}, {'1', '2'})
+        for path, data in [('/api/favorite', {'article_number': '1', 'favorite': False}),
+                           ('/api/favorites/bulk', {'article_numbers': ['3']}),
+                           ('/api/recommendations/feedback', {'article_number': '2', 'action': 'dismissed'}),
+                           ('/api/ai/proposals/decision', {'ids': [1], 'decision': 'approve'})]:
+            self.assertEqual(self.post(self.reader, path, data).status_code, 403)
+        self.assertEqual(self.favorites(1), {1, 2})
+        self.assertEqual(self.favorites(3), set())
+        self.post(self.admin, '/api/favorite', {'article_number': '1', 'favorite': False})
+        self.assertEqual(self.reader.get('/api/meta').json['fav_total'], 1)
+        with account_scope(3):
+            service = RecommendationService(self.engine, None, lambda n: {}, account_id=3)
+            try:
+                self.assertEqual([p['article_number'] for p in service.snapshot()['favorites']], ['2'])
+            finally:
+                service.close()
+
+    def test_linked_reader_keeps_password_and_private_state_separate(self):
+        self.link_reader()
+        repo = LocalAIRepository(self.engine)
+        with account_scope(1):
+            job = repo.create_job({'owner': 'admin', 'kind': 'ask', 'model': 'test', 'request': {}})
+            FeedbackStore(self.engine).save('2', 'dismissed')
+        with account_scope(3):
+            self.assertIsNone(repo.get_job(job, 'admin'))
+            self.assertEqual(FeedbackStore(self.engine).read()['actions'], {})
+            with self.assertRaises(PermissionError):
+                self.store.set_favorites(3, ['2'], True)
+        response = self.reader.post('/account/password', data={
+            'current_password': self.password, 'new_password': 'Change8!',
+            'confirmation': 'Change8!', 'csrf_token': 'test-csrf'})
+        self.assertEqual(response.status_code, 302)
+        self.assertIsNotNone(self.store.authenticate('admin', self.password))
+        self.assertIsNotNone(self.store.authenticate('reader', 'Change8!'))
+        self.assertEqual(self.reader.get('/api/meta').json['fav_total'], 1)
+
+    def test_favorites_link_is_viewer_only_and_disabled_source_is_hidden(self):
+        self.link_reader()
+        with self.engine.begin() as conn:
+            conn.execute(text('UPDATE accounts SET favorites_source_account_id=1 WHERE id=2'))
+            conn.execute(text('DELETE FROM account_favorites WHERE account_id=2'))
+        self.assertEqual(self.member.get('/api/meta').json['fav_total'], 0)
+        with self.engine.begin() as conn:
+            conn.execute(text('UPDATE accounts SET is_active=0 WHERE id=1'))
+        self.assertEqual(self.reader.get('/api/meta').json['fav_total'], 0)
+
+    def test_create_linked_viewer_requires_password_change_and_never_overwrites(self):
+        from scripts.create_viewer_account import create_viewer
+        before = self.favorites(1)
+        preview = create_viewer(self.engine, 'new_reader', 'admin')
+        self.assertFalse(preview['apply'])
+        report = create_viewer(self.engine, 'new_reader', 'admin', 'Generated-42!',
+                               apply=True, must_change_password=True)
+        created = self.store.authenticate('new_reader', 'Generated-42!')
+        self.assertEqual(created['role'], 'viewer')
+        self.assertEqual(created['favorites_source_account_id'], 1)
+        client = self.client(report['account_id'], 'new_reader', 'viewer')
+        self.assertEqual(client.get('/api/meta').status_code, 403)
+        self.assertTrue(client.get('/').location.endswith('/account/password'))
+        with self.assertRaisesRegex(ValueError, 'already exists'):
+            create_viewer(self.engine, 'new_reader', 'admin', 'Replacement-42!', apply=True)
+        self.assertIsNotNone(self.store.authenticate('new_reader', 'Generated-42!'))
+        self.assertEqual(self.favorites(1), before)
+
+    def test_deferred_viewer_only_activates_after_setting_password(self):
+        from scripts.create_viewer_account import create_viewer
+        report = create_viewer(self.engine, 'new_reader', 'admin', apply=True)
+        self.assertFalse(report['active'])
+        self.assertIsNone(self.store.authenticate('new_reader', ''))
+        client = self.client(report['account_id'], 'new_reader', 'viewer')
+        self.assertEqual(client.get('/api/meta').status_code, 401)
+        self.store.set_password('new_reader', 'Chosen-42!')
+        account = self.store.authenticate('new_reader', 'Chosen-42!')
+        self.assertEqual(account['favorites_source_account_id'], 1)
+        self.assertEqual(account['role'], 'viewer')
 
     def test_missing_disabled_and_stale_sessions_fail_closed(self):
         old = server.app.test_client()

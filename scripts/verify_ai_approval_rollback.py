@@ -31,7 +31,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from local_ai_repository import LocalAIRepository, approval_groups, json_value
+from paper_server.ai.repository import LocalAIRepository, approval_groups, json_value
 
 
 SERDES_TABLES = (

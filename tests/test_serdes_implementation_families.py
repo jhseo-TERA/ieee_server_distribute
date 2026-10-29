@@ -1,6 +1,6 @@
 import unittest
 
-from serdes_implementation_families import (
+from paper_server.serdes.implementation_families import (
     author_surnames,
     build_match_candidates,
     candidate_key,

@@ -48,7 +48,16 @@ $ready = $false
 for ($attempt=0; $attempt -lt 30; $attempt++) {
     try {
         $health = Invoke-RestMethod 'http://127.0.0.1:5001/health' -TimeoutSec 2
-        if ($health.ok) { $ready = $true; break }
+        $candidateListeners = @(Get-NetTCPConnection -LocalPort 5001 -State Listen -ErrorAction Stop)
+        if ($candidateListeners.Count -eq 1) {
+            $candidateProcess = Get-CimInstance Win32_Process -Filter "ProcessId=$($candidateListeners[0].OwningProcess)"
+            $isLaunchedServer = $candidateProcess -and (
+                $candidateProcess.ProcessId -eq $launched.Id -or $candidateProcess.ParentProcessId -eq $launched.Id
+            ) -and $candidateProcess.CommandLine.Trim() -in $expectedCommands
+            # Windows' venv launcher spawns the real Python process. A health
+            # response from an older listener must not count as this restart.
+            if ($health.ok -and $isLaunchedServer) { $ready = $true; break }
+        }
     } catch {}
     Start-Sleep -Milliseconds 500
 }

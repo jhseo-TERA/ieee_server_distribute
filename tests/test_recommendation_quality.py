@@ -4,10 +4,10 @@ import unittest
 from unittest.mock import Mock, patch
 
 from sqlalchemy import create_engine, event, text
-from recommendation_feedback import FeedbackStore, metadata
-from recommendation_policy import (FavoriteSimilarity, allocate, weighted_profile, near_duplicate,
+from paper_server.recommendation.feedback import FeedbackStore, metadata
+from paper_server.recommendation.policy import (FavoriteSimilarity, allocate, weighted_profile, near_duplicate,
                                    excluded_electrical_multicarrier)
-from local_ai_recommendations import RecommendationService, VERSION, select_mode, select_sql_mode, validated_ranks
+from paper_server.ai.recommendations import RecommendationService, VERSION, select_mode, select_sql_mode, validated_ranks
 import web.app as app
 
 
@@ -149,7 +149,7 @@ class QualityTests(unittest.TestCase):
         service.enrich = Mock(side_effect=deepcopy)
         worker._chat.return_value = ({'rankings': [{'id': 'p', 'score': 25, 'novelty': 100,
             'topic': 'RX', 'favorite_id': 'f', 'reason': 'General term only', 'evidence': 'CMOS receiver'}]}, {})
-        with patch('local_ai_recommendations.RANKING_MODE', 'legacy'):
+        with patch('paper_server.ai.recommendations.RANKING_MODE', 'legacy'):
             result = service.run('test', {'signature': 'sig'}, threading.Event())
         self.assertEqual(result['evaluated_count'], 1)
         self.assertEqual(result['qualified_count'], 0)

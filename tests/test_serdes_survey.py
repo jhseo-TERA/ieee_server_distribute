@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 
 from werkzeug.datastructures import MultiDict
 
-from serdes_metrics import (
+from paper_server.serdes.metrics import (
     canonical_ieee_url,
     classify_link_medium,
     extract_performance,
@@ -815,8 +815,14 @@ class SerdesSurveyTests(unittest.TestCase):
             sess["username"] = "viewer"
             sess["role"] = "viewer"
             sess["csrf_token"] = "test-token"
+            sess["account_id"] = 991
+            sess["session_version"] = 1
 
-        response = client.get("/serdes")
+        account = dict(id=991, username="viewer", role="viewer", is_active=1,
+                       session_version=1, must_change_password=0)
+        with patch.object(app_module.accounts, "get", return_value=account), \
+                patch.dict(app_module.app.config, ACCOUNT_AUTH_ENABLED=True):
+            response = client.get("/serdes")
 
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"SerDes Performance Survey", response.data)
@@ -859,8 +865,14 @@ class SerdesSurveyTests(unittest.TestCase):
             sess["username"] = "viewer"
             sess["role"] = "viewer"
             sess["csrf_token"] = "test-token"
+            sess["account_id"] = 991
+            sess["session_version"] = 1
 
-        with patch.object(app_module, "SURVEY_AI_UI_ENABLED", True):
+        account = dict(id=991, username="viewer", role="viewer", is_active=1,
+                       session_version=1, must_change_password=0)
+        with patch.object(app_module, "SURVEY_AI_UI_ENABLED", True), \
+                patch.object(app_module.accounts, "get", return_value=account), \
+                patch.dict(app_module.app.config, ACCOUNT_AUTH_ENABLED=True):
             response = client.get("/serdes")
 
         self.assertIn(b'id="survey-ai"', response.data)

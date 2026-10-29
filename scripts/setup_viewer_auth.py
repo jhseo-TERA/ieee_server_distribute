@@ -48,7 +48,7 @@ def main() -> None:
 
     if os.getenv('ACCOUNT_AUTH_ENABLED', '1') == '1':
         from migrate_accounts import connect_engine
-        from account_store import AccountStore
+        from paper_server.accounts import AccountStore
         engine, _ = connect_engine()
         AccountStore(engine).set_password(username, password)
         print('[완료] 읽기 전용 계정 비밀번호가 DB에 저장되었습니다. 바로 로그인할 수 있습니다.')

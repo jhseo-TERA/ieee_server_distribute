@@ -7,7 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from sqlalchemy import bindparam, text
 from web.app import engine, build_serdes_performance, ROOT
-from serdes_figures import FigureStore
+from paper_server.serdes.figures import FigureStore
 
 def main():
     data = build_serdes_performance({'evidence_tier': 'structured'}, strict=True)

@@ -28,7 +28,7 @@ import requests
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from serdes_metrics import plain_text, title_similarity  # noqa: E402
+from paper_server.serdes.metrics import plain_text, title_similarity  # noqa: E402
 from scripts.serdes_data_pipeline import (  # noqa: E402
     SERDES_LATEST_COMPLETE_RUNS_SQL,
     classify_link_media,

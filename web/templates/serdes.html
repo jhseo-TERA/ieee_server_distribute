@@ -3,6 +3,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<script src="{{ url_for('static',filename='account_presence.js') }}" data-csrf="{{ csrf_token }}" defer></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="SQL 논문 저장소를 기반으로 한 대화형 SerDes 성능·문헌 서베이">
 <meta property="og:title" content="SerDes Performance Survey">
@@ -194,6 +195,10 @@
   .evidence-box[hidden]{display:none}.evidence-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
   .evidence-item{background:#fff;border:1px solid #d8e1de;border-radius:7px;padding:9px 10px;font-size:11px;color:var(--muted)}
   .evidence-item b{color:var(--ink)}.evidence-item a{color:#087c80}.evidence-empty{font-size:12px;color:var(--muted)}
+  .evidence-section+.evidence-section{margin-top:18px;border-top:1px solid #d8e1de;padding-top:12px}.evidence-section h4{font-size:13px;margin:0 0 9px}
+  .evidence-item-head{display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap}.evidence-status{font-size:10px;border-radius:4px;padding:2px 5px;background:#e3f0e8;color:#276e47}.evidence-status.pending{background:#fff0cf;color:#835b13}
+  .evidence-meta{font-size:11px;color:var(--muted);overflow-wrap:anywhere;margin:5px 0}.evidence-quote{white-space:pre-wrap;overflow-wrap:anywhere;margin:7px 0;color:var(--ink);line-height:1.5}.evidence-values{color:var(--ink);font-weight:600;margin-top:8px}
+  .evidence-candidate{border-color:#ddcb9f}.evidence-review-note{font-size:11px;color:#795816;line-height:1.5;margin:7px 0}.evidence-conflicts{background:#fff6df;border:1px solid #ead6a0;border-radius:6px;padding:9px 10px;font-size:11px;margin-bottom:10px;overflow-wrap:anywhere}.evidence-more{margin:9px 0}.evidence-more summary{cursor:pointer;font-size:11px;margin-bottom:8px}
   .empty{background:var(--card);border:1px dashed #c8cbc7;border-radius:12px;text-align:center;padding:56px 20px;color:var(--muted)}
   .pager{display:flex;justify-content:center;align-items:center;gap:6px;margin-top:22px;flex-wrap:wrap}
   .pager button{min-width:34px;height:34px;border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer}
@@ -244,6 +249,7 @@
     <a class="nav-link" href="#performance">성능</a>
     <a class="nav-link" href="#papers">논문</a>
     <a class="nav-link" href="{{ url_for('index') }}">전체 저장소</a>
+    <a class="nav-link" href="{{ url_for('connection_map') }}">Connection 지도</a>
     <a class="nav-link" href="/ai">AI Research Desk</a>
     <span class="account-label">{{ username }}{% if role == "viewer" %} · 읽기 전용{% endif %}</span>
     <a class="nav-link" href="/account/password">비밀번호 변경</a>
@@ -460,6 +466,7 @@
 
 <script src="{{ url_for('static', filename='serdes_labels.js') }}"></script>
 <script src="{{ url_for('static', filename='serdes_diagrams.js') }}"></script>
+<script src="{{ url_for('static', filename='serdes_evidence.js') }}"></script>
 <script>
 const API="";
 const CSRF_TOKEN={{ csrf_token|tojson }};
@@ -921,9 +928,9 @@ function rowHtml(item){
   const citationDate=item.citation_updated_at?new Date(item.citation_updated_at):null;
   const citationTooltip=citationCount===null?"인용 메타데이터가 아직 확보되지 않았습니다. 0회를 뜻하지 않습니다.":`${citationSource} 집계${citationDate&&!isNaN(citationDate)?` · 확인 ${citationDate.toLocaleDateString('ko-KR')}`:""}. 출처마다 집계 범위가 다릅니다.`;
   const citationClass=`citation-count${state.sort==="citations"?" active":""}${citationCount===null?" missing":""}`;
-  const original=external?`<a href="${esc(external)}" target="_blank" rel="noopener">원문 ↗</a>`:"";
+  const original=(external?`<a href="${esc(external)}" target="_blank" rel="noopener">원문 ↗</a>`:"")+`<a href="/connection?article_number=${encodeURIComponent(item.article_number)}" title="이 논문으로 SQL 유사도 지도 열기">지도 ↗</a>`;
   const pdf=item.pdf_available?`<button class="pdf" data-action="pdf" data-article="${esc(item.article_number)}" data-title="${esc(item.title)}">PDF</button>`:"";
-  const evidence=item.performance?.evidence_count?`<button data-action="evidence" data-article="${esc(item.article_number)}">근거 ${Number(item.performance.evidence_count).toLocaleString()}</button>`:"";
+  const evidence=(item.performance?.evidence_count||item.pdf_available)?`<button data-action="evidence" data-article="${esc(item.article_number)}">${item.performance?.evidence_count?`근거 ${Number(item.performance.evidence_count).toLocaleString()}`:"근거 확인"}</button>`:"";
   const star=`<button class="star ${item.is_favorite?'on':''}" data-action="favorite" data-article="${esc(item.article_number)}" title="${CAN_EDIT_FAVORITES?'즐겨찾기 변경':'즐겨찾기 읽기 전용'}" ${CAN_EDIT_FAVORITES?'':'disabled'}>${item.is_favorite?'★':'☆'}</button>`;
   const screening=item.screening,screeningLabels={core:"Core SerDes",adjacent:"Adjacent I/O",needs_review:"Review",out_of_scope:"Noise"};
   const screeningTag=screening?`<span class="tag screening ${esc(screening.relevance_class)}" title="${esc(screening.rationale||'')}">${esc(screeningLabels[screening.relevance_class]||screening.relevance_class)} · ${Math.round(Number(screening.relevance_score)||0)}</span>`:"";
@@ -980,7 +987,7 @@ async function toggleEvidence(button){
   const box=$("evidence-"+button.dataset.article);if(!box)return;
   if(box.dataset.loaded){box.hidden=!box.hidden;return}
   box.hidden=false;box.innerHTML='<span class="evidence-empty">근거를 불러오는 중…</span>';
-  try{const data=await fetchJson(API+"/api/serdes/papers/"+encodeURIComponent(button.dataset.article)+"/evidence");const rows=data.evidence||[];box.innerHTML=rows.length?`<div class="evidence-list">${rows.slice(0,16).map(row=>{const url=safeUrl(row.source_url),source=url?`<a href="${esc(url)}" target="_blank" rel="noopener">${esc(row.source_label)} ↗</a>`:esc(row.source_label);return `<div class="evidence-item"><b>${esc(row.field)}</b> · ${source} · ${esc(row.locator||"")}<br>${esc(row.text)}</div>`}).join("")}</div>`:'<span class="evidence-empty">이 논문에 연결된 근거 문장이 없습니다.</span>';box.dataset.loaded="1"}catch(error){if(error.message!=="auth")box.innerHTML='<span class="evidence-empty">근거를 불러오지 못했습니다.</span>'}
+  try{const data=await fetchJson(API+"/api/serdes/papers/"+encodeURIComponent(button.dataset.article)+"/evidence");SerdesEvidence.render(box,data);box.dataset.loaded="1"}catch(error){if(error.message!=="auth")box.innerHTML='<span class="evidence-empty">근거를 불러오지 못했습니다.</span>'}
 }
 $("paper-list").addEventListener("click",event=>{const button=event.target.closest("[data-action]");if(!button)return;if(button.dataset.action==="pdf")openPdf(button.dataset.article,button.dataset.title);if(button.dataset.action==="favorite")toggleFavorite(button);if(button.dataset.action==="evidence")toggleEvidence(button)});
 

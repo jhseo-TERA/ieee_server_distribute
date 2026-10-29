@@ -8,7 +8,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from serdes_figures import FigureStore
+from paper_server.serdes.figures import FigureStore
 
 def main():
     out = ROOT / 'outputs/serdes_figure_audit'

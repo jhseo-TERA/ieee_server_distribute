@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Paper Repository</title>
+<script src="{{ url_for('static',filename='account_presence.js') }}" data-csrf="{{ csrf_token }}" defer></script>
 <style>
   :root{
     --wine:#6B1E2E; --wine-dark:#4A1520; --wine-light:#8a2b3e;
@@ -50,6 +51,12 @@
   .wrap{display:flex;gap:0;align-items:stretch;flex:1;min-height:0;overflow:hidden}
   .main{flex:1;min-width:0;height:100%;padding:16px 24px;overflow-y:auto;overscroll-behavior-y:contain;scrollbar-gutter:stable}
   .result-info{color:var(--muted);font-size:13px;margin-bottom:10px}
+  .library-tabs{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+  .library-tab{border:1px solid var(--line);border-radius:8px;padding:9px 14px;background:#fff;color:var(--muted);font:inherit;font-size:13px;cursor:pointer}
+  .library-tab.active{background:var(--wine);border-color:var(--wine);color:#fff;font-weight:700}
+  .library-tab:focus-visible{outline:2px solid var(--wine);outline-offset:3px}
+  .library-tab small{margin-left:7px;font-size:11px;opacity:.8}
+  .library-note{font-size:12px;color:var(--muted);margin:0 0 14px;line-height:1.7}
 
   /* ---------- Table ---------- */
   .table-scroll{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:10px}
@@ -156,8 +163,11 @@
       <div class="badge"><b id="stat-period">–</b><span>수록 기간</span></div>
     </div>
     <div class="account">
+      <a class="survey-link" href="/daily-review">오늘의 2편 · 개인 리뷰 →</a>
+      {% if username == 'admin' %}<a class="survey-link" href="/account/activity">계정 로그인 현황 →</a>{% endif %}
       <a class="survey-link" href="/ai">AI Research Desk →</a>
       <a class="survey-link" href="{{ url_for('serdes_survey') }}">SerDes Survey →</a>
+      <a class="survey-link" href="{{ url_for('connection_map') }}">Connection 지도 →</a>
       <span>{{ username }}{% if role == "viewer" %} · 읽기 전용{% endif %}</span>
       <a class="survey-link" href="/account/password">비밀번호 변경</a>
       <form method="post" action="{{ url_for('logout') }}">
@@ -202,6 +212,12 @@
 
 <div class="wrap">
   <div class="main">
+    <div class="library-tabs" role="group" aria-label="논문 목록 탭">
+      <button type="button" class="library-tab active" data-collection="all" aria-pressed="true">전체 논문</button>
+      <button type="button" class="library-tab" data-collection="designcon" aria-pressed="false">DesignCon 전체<small id="designcon-total">–</small></button>
+      <button type="button" class="library-tab" data-collection="designcon-favorites" aria-pressed="false">★ DesignCon 즐겨찾기<small id="designcon-fav-total">–</small></button>
+    </div>
+    <p class="library-note" id="designcon-note" hidden>DesignCon 전체에서 관심 논문의 ☆를 눌러 즐겨찾기에 추가하세요. ★로 고른 논문이 매일 2편 추천 후보에 들어갑니다.</p>
     <div id="favorite-status" role="status" aria-live="polite" class="result-info" hidden></div>
     <div class="reco-panel" id="reco-panel">
       <div class="reco-head">
@@ -319,6 +335,8 @@ function renderStats(m){
   document.getElementById("stat-fav-pdf").textContent = m.fav_pdf_total.toLocaleString();
   document.getElementById("stat-fav-missing").textContent = m.fav_missing_pdf_total.toLocaleString();
   document.getElementById("stat-nonfav-pdf").textContent = m.nonfav_pdf_total.toLocaleString();
+  document.getElementById('designcon-total').textContent = (m.designcon_total || 0).toLocaleString();
+  document.getElementById('designcon-fav-total').textContent = (m.designcon_fav_total || 0).toLocaleString();
   document.getElementById("stat-period").textContent =
      (m.year_min && m.year_max) ? `${m.year_min}–${m.year_max}` : "–";
 }
@@ -372,7 +390,10 @@ async function loadPapers(){
 function renderRows(d){
   const tb = document.getElementById("tbody");
   if(!d.items.length){
-    tb.innerHTML = `<tr><td colspan="9"><div class="empty">조건에 맞는 논문이 없습니다.</div></td></tr>`;
+    const message = state.publisher === 'designcon' && state.fav_status === 'favorite'
+      ? '조건에 맞는 DesignCon 즐겨찾기가 없습니다. DesignCon 전체 탭에서 관심 논문의 ☆를 눌러 추가하세요.'
+      : '조건에 맞는 논문이 없습니다.';
+    tb.innerHTML = `<tr><td colspan="9"><div class="empty">${message}</div></td></tr>`;
     return;
   }
   const base = (d.page-1)*d.size;
@@ -391,7 +412,7 @@ function renderRows(d){
     return `<tr>
       <td class="col-star">${star}</td>
       <td class="col-no">${base+i+1}</td>
-      <td class="title-cell">${esc(it.title)}</td>
+      <td class="title-cell">${esc(it.title)} <a class="link-x" href="/connection?article_number=${encodeURIComponent(it.article_number)}" title="이 논문으로 SQL 유사도 지도 열기">지도 ↗</a></td>
       <td class="authors-cell">${esc(it.authors)||'<span style="color:#c2c6cd">—</span>'}</td>
       <td class="col-year">${esc(it.year)||''}</td>
       <td><span class="src-badge" style="background:${colorFor(it.source_name)}">${esc(it.source_name)||'?'}</span>
@@ -443,6 +464,28 @@ document.getElementById("pdf-close").onclick=()=>{
 };
 
 // ---- 필터/검색 이벤트 ----
+function syncLibraryTabs(){
+  const designcon = state.publisher === 'designcon';
+  const selected = designcon ? (state.fav_status === 'favorite' ? 'designcon-favorites' : 'designcon') : 'all';
+  document.querySelectorAll('[data-collection]').forEach(button=>{
+    const active = button.dataset.collection === selected;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
+  document.getElementById('designcon-note').hidden = !designcon;
+  document.getElementById('reco-panel').hidden = designcon;
+}
+function selectLibraryTab(collection){
+  if(!['all','designcon','designcon-favorites'].includes(collection)) return;
+  clearTimeout(deb);
+  ['q','f-year','f-source','f-type','f-pdf'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-publisher').value = collection === 'all' ? '' : 'designcon';
+  document.getElementById('f-fav').value = collection === 'designcon-favorites' ? 'favorite' : '';
+  applyFilters();
+}
+document.querySelectorAll('[data-collection]').forEach(button=>{
+  button.addEventListener('click', ()=>selectLibraryTab(button.dataset.collection));
+});
 function applyFilters(resetPage=true){
   state.q = document.getElementById("q").value.trim();
   state.year = document.getElementById("f-year").value;
@@ -453,6 +496,7 @@ function applyFilters(resetPage=true){
   state.fav_status = document.getElementById("f-fav").value;
   state.size = Number(document.getElementById("f-size").value) || 50;
   if(resetPage) state.page=1;
+  syncLibraryTabs();
   loadPapers();
 }
 
@@ -544,7 +588,7 @@ function recoRowHtml(it){
   const star = favoriteButton(it);
   const reason = it.recommendation_basis === 'ai'
     ? `<div class="reco-reason">AI ${esc(it.ai_score)} · ${esc(it.ai_topic)} — ${esc(it.ai_reason)}<details><summary>추천 근거</summary><div>관련 즐겨찾기: <a href="/ai?paper=${encodeURIComponent(it.ai_favorite_id)}" target="_blank" rel="noopener">${esc(it.ai_favorite_title)}</a></div><div>후보 원문: “${esc(it.ai_evidence)}”</div><div>${it.ai_evidence_basis === 'title_only' ? '제목 기반 평가 · 초록 없음' : '제목·저장 초록 기반 평가'}</div></details></div>`
-    : `<div class="reco-reason">${esc(it.interest_topic || '관련 연구')} · ${esc(it.recommendation_reason || '즐겨찾기 제목 기반')}</div><div class="authors-cell">${it.related_favorite_title ? '<details><summary>관련 즐겨찾기</summary>'+esc(it.related_favorite_title)+'<br>'+esc((it.shared_terms||[]).join(', '))+'</details>' : '키워드 추천'}</div>`;
+    : `<div class="reco-reason">${esc(it.interest_topic || '관련 연구')} · ${esc(it.recommendation_reason || '즐겨찾기 제목 기반')}</div><div class="authors-cell">${it.related_favorite_title ? '<details><summary>관련 즐겨찾기</summary>'+esc(it.related_favorite_title)+'<br>공통 기술: '+esc((it.shared_technical_terms||it.shared_terms||[]).join(', '))+(it.abstract_expansion_terms?.length ? '<br>저장된 초록에서 확장: '+esc(it.abstract_expansion_terms.join(', ')) : '')+'</details>' : '키워드 추천'}</div>`;
   const feedback = CAN_EDIT_FAVORITES && lastRecoData?.feedback_available
     ? `<div><button class="btn btn-ghost" data-act="reco-feedback" data-art="${esc(it.article_number)}" data-feedback="dismissed">관심 없음</button> <button class="btn btn-ghost" data-act="reco-feedback" data-art="${esc(it.article_number)}" data-feedback="reviewed">검토 완료</button></div>` : '';
   return `<tr data-reco-id="${esc(it.article_number)}">
@@ -726,6 +770,8 @@ async function loadRecommendations(){
       `<div class="reco-count">즐겨찾기 ${d.fav_count.toLocaleString()}건 · 출처 탭 ${lastRecoGroups.length}개 · ${selectedRecoSource ? esc(selectedRecoSource)+' '+lastRecoItems.length+'건 표시 · ' : ''}${d.engine === 'hybrid' ? 'AI 평가 통과 추천' : '규칙 기반 '+esc(d.modes?.[mode] || '추천')}${d.total_limit ? ' · 전체 최대 '+esc(d.total_limit)+'편' : ''} · 출처당 최대 ${d.per_source}편</div>`
     ];
     if(ai.generated_at) lines.push(`<div>${esc(ai.model)} · ${esc(ai.generated_at.replace('T',' '))} 생성 · AI 평가 ${ai.evaluated_count}/${ai.attempted_count ?? ai.candidate_count}편${ai.qualified_count !== undefined ? ' · 기준 통과 '+esc(ai.qualified_count)+'편' : ''}${ai.stale?' · 갱신 예정':''}</div>`);
+    if(d.retrieval?.version) lines.push(`<div>전체 ${Number(d.retrieval.corpus_count).toLocaleString()}편의 제목에서 즐겨찾기 ${Number(d.retrieval.searched_favorites).toLocaleString()}편을 각각 비교 · 발견 후보 ${Number(d.retrieval.discovered_candidates).toLocaleString()}편 · 제목 후보 ${Number(d.retrieval.title_pool_count ?? d.retrieval.pool_count).toLocaleString()}편</div>`);
+    if(d.retrieval?.abstract_favorites) lines.push(`<div>저장된 초록 ${Number(d.retrieval.abstract_favorites).toLocaleString()}편의 기술 용어 활용 · 초록 확장 후보 +${Number(d.retrieval.abstract_added_candidates).toLocaleString()}편 · 전체 선택 후보 ${Number(d.retrieval.pool_count).toLocaleString()}편</div>`);
     if(ai.ranking_mode === 'pair') lines.push(`<div>평가 재사용 ${esc(ai.cached_count)}편 · 신규 평가 ${esc(ai.new_evaluated_count)}/${esc(ai.new_attempted_count)}편 · 탐색 순위는 현재 즐겨찾기 분포로 재계산합니다.</div>`);
     if(ai.scheduled && !busy) lines.push(`<div>연속 변경을 모으는 중 · 마지막 변경 후 ${esc(ai.auto_delay_seconds || 45)}초 대기 뒤 자동 갱신합니다. 수동 갱신은 바로 요청할 수 있습니다.</div>`);
     if(busy) lines.push(`<div>${esc(ai.progress || 'AI 추천 갱신 대기 중')} · 저장된 추천을 표시합니다.</div>`);
@@ -812,7 +858,13 @@ document.body.addEventListener("click", (e)=>{
 });
 
 // ---- init ----
-(async()=>{ await loadMeta(); await loadPapers(); loadRecommendations(); })();
+(async()=>{
+  await loadMeta();
+  const collection = new URLSearchParams(window.location.search).get('collection');
+  if(['designcon','designcon-favorites'].includes(collection)) selectLibraryTab(collection);
+  else { syncLibraryTabs(); await loadPapers(); }
+  loadRecommendations();
+})();
 </script>
 </body>
 </html>

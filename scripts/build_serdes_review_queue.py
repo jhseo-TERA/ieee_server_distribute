@@ -16,7 +16,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.serdes_data_pipeline import db_connect  # noqa: E402
-from serdes_review_queue import build_review_package, json_value  # noqa: E402
+from paper_server.serdes.review_queue import build_review_package, json_value  # noqa: E402
 
 
 LATEST_RUNS_SQL = (

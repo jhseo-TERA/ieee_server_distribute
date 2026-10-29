@@ -13,7 +13,7 @@ from PIL import Image
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT));sys.path.append(str(ROOT/'.venv/Lib/site-packages'))
 import pypdfium2 as pdfium
-from serdes_figures import FigureStore, VERSION, valid_rect
+from paper_server.serdes.figures import FigureStore, VERSION, valid_rect
 import web.app as app_module
 
 

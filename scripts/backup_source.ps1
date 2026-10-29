@@ -19,25 +19,17 @@ $partialPath = "$archivePath.partial"
 $staging = Join-Path ([System.IO.Path]::GetTempPath()) "IEEE_Paper_Server_source_${stamp}_$PID"
 $tar = (Get-Command tar.exe -ErrorAction Stop).Source
 
-$sourceRoots = @("scripts", "web", "tests", "py_00_src", "config")
+$sourceRoots = @("scripts", "web", "tests", "py_00_src", "config", "paper_server", "docs")
 $rootFiles = @(
     "README_SERVER.md",
-    "DAILY_WORKFLOW.md",
-    "METADATA_UPDATE.md",
-    "PDF_DOWNLOAD_ROUTINE.md",
-    "BACKUP_POLICY.md",
-    "RECOVERY_RUNBOOK.md",
-    "LOCAL_AI_RESEARCH.md",
-    "CLAUDE_CODE_지시문.md",
     "README.txt",
+    "RELAUNCH_SERVICES.bat",
     "requirements.lock.txt",
     ".env.example",
     ".gitignore",
     ".gitattributes"
 )
-# Root-level Python modules contain the SerDes parsers, classifiers and family
-# logic used by both Flask and recovery scripts; keep them in source backups.
-$rootFiles += @(Get-ChildItem -LiteralPath $root -File -Filter "*.py" | Select-Object -ExpandProperty Name)
+# Application modules and relocated documentation are included by sourceRoots.
 
 foreach ($relative in $sourceRoots) {
     $path = Join-Path $root $relative

@@ -10,10 +10,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from sqlalchemy import text
 import web.app as app
-from local_ai_runtime import OllamaClient
-from local_ai_service import LocalAIService
-from local_ai_recommendations import RecommendationService, MODEL, MODES, select_mode, TOTAL_RECOMMENDATIONS
-from recommendation_pair_cache import MemoryPairCache
+from paper_server.ai.runtime import OllamaClient
+from paper_server.ai.service import LocalAIService
+from paper_server.ai.recommendations import RecommendationService, MODEL, MODES, select_mode, TOTAL_RECOMMENDATIONS
+from paper_server.recommendation.pair_cache import MemoryPairCache
 
 
 class PreviewWorker:

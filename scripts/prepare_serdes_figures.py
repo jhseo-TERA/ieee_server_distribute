@@ -9,7 +9,7 @@ import time
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from sqlalchemy import bindparam, text
 from web.app import engine, build_serdes_performance, ROOT
-from serdes_figures import FigureStore
+from paper_server.serdes.figures import FigureStore
 
 
 def main():
@@ -17,6 +17,10 @@ def main():
     parser.add_argument('--limit', type=int, default=0)
     parser.add_argument('--article', action='append')
     parser.add_argument('--retry', action='store_true')
+    parser.add_argument('--layout', choices=['auto', 'paddle', 'off'], default='auto',
+                        help='Use installed PaddleOCR layout automatically, require it, or use native PDF extraction only.')
+    parser.add_argument('--cache-namespace', default='caption-figures-v4',
+                        help='Use a separate namespace to stage a regeneration before review.')
     args = parser.parse_args()
     ids = sorted({p['paper_id'] for p in build_serdes_performance({'evidence_tier':'all'})['points'] if p.get('paper_id')})
     if not ids:
@@ -30,12 +34,12 @@ def main():
         papers = [p for p in papers if p['article_number'] in args.article]
     if args.limit:
         papers = papers[:args.limit]
-    store, counts, started = FigureStore(ROOT), Counter(), time.monotonic()
+    store, counts, started = FigureStore(ROOT, args.cache_namespace, layout=args.layout), Counter(), time.monotonic()
     for index, paper in enumerate(papers, 1):
         try:
             result = store.prepare(paper, retry=args.retry)
             counts[result['status']] += 1
-            detail = {k: result[k] for k in ('page','figure_number','caption','image') if k in result}
+            detail = {k: result[k] for k in ('page','figure_number','caption','image','layout_parser') if k in result}
         except Exception as exc:
             counts['error'] += 1
             detail = {'error': type(exc).__name__, 'message': str(exc)[:180]}

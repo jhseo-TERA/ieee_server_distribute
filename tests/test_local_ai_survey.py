@@ -4,7 +4,7 @@ import threading
 import unittest
 from unittest.mock import Mock
 
-from local_ai_survey import SurveyAIService, build_snapshot, checked_observations, number, numeric_literals, validate_filters
+from paper_server.ai.survey import SurveyAIService, build_snapshot, checked_observations, number, numeric_literals, validate_filters
 
 
 def point(i, rate=10, energy=2, medium='electrical', scope='rx', **metrics):

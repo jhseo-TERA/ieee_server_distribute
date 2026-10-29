@@ -16,7 +16,7 @@ try:
     from .serdes_data_pipeline import db_connect, ensure_schema
 except ImportError:  # Direct script execution keeps scripts/ on sys.path.
     from serdes_data_pipeline import db_connect, ensure_schema
-from serdes_metrics import canonical_ieee_url, plain_text
+from paper_server.serdes.metrics import canonical_ieee_url, plain_text
 
 
 ROOT = Path(__file__).resolve().parents[1]

@@ -1,15 +1,15 @@
 from copy import deepcopy
 import unittest
 from jsonschema import validate, ValidationError
-from recommendation_ranking import compact_request, expand_ranks
-from local_ai_recommendations import validated_ranks
-from recommendation_pair_cache import (pair_input, pair_key, pair_request, validated_pairs,
+from paper_server.recommendation.ranking import compact_request, expand_ranks
+from paper_server.ai.recommendations import validated_ranks
+from paper_server.recommendation.pair_cache import (pair_input, pair_key, pair_request, validated_pairs,
                                        contextualize, MemoryPairCache, PairRanker, PairCache)
 from unittest.mock import Mock, patch
 import json
 import threading
 from sqlalchemy import create_engine, text, event
-from local_ai_recommendations import RecommendationService, AUTO_DELAY_SECONDS
+from paper_server.ai.recommendations import RecommendationService, AUTO_DELAY_SECONDS
 
 
 class CompactTests(unittest.TestCase):
@@ -200,7 +200,7 @@ class PipelineTests(unittest.TestCase):
         worker._chat.side_effect=[({'r':[{'i':'p0','f':'f0','t':'t0','s':85,'n':20,'e':'receiver with DFE'},
                                          {'i':'p1','f':'f0','t':'t0','s':0,'n':0,'e':'/n/0'}]},{}),
                                   ({'r':[{'i':'p0','f':'f0','t':'t0','s':25,'n':0,'e':'analog equalizer'}]}, {})]
-        with patch('local_ai_recommendations.RANKING_MODE','compact'):
+        with patch('paper_server.ai.recommendations.RANKING_MODE','compact'):
             result=service.run('test',{'signature':'sig','model':'gpt-oss:20b'},threading.Event())
         self.assertEqual(result['evaluated_count'],2)
         self.assertEqual(result['retried_count'],1)
@@ -226,7 +226,7 @@ class PipelineTests(unittest.TestCase):
                    'shared_terms':['receiver'],'favorite_similarity':.7,'survey_missing':[]}
         service.sql_builder.return_value={'items':[candidate],'groups':[{'name':'JSSC'}]}
         service.enrich=Mock(side_effect=deepcopy)
-        with patch('local_ai_recommendations.RANKING_MODE','pair'):
+        with patch('paper_server.ai.recommendations.RANKING_MODE','pair'):
             first=service.run('test',{'signature':'one','model':'gpt-oss:20b'},threading.Event())
             snap['signature']='two'
             snap['favorites'].append({'article_number':'new','title':'Optical modulator','source_name':'OFC'})
@@ -244,7 +244,7 @@ class PipelineTests(unittest.TestCase):
         timers=[]
         def timer(delay,callback):
             obj=Mock(callback=callback,delay=delay);timers.append(obj);return obj
-        with patch('local_ai_recommendations.threading.Timer',side_effect=timer):
+        with patch('paper_server.ai.recommendations.threading.Timer',side_effect=timer):
             service.schedule_refresh({'signature':'a'})
             service.schedule_refresh({'signature':'b'})
             timers[0].callback()  # cancelled generation cannot start work

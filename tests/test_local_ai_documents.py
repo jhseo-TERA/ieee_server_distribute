@@ -6,7 +6,7 @@ import types
 import unittest
 from unittest.mock import MagicMock, patch
 
-from local_ai_documents import DocumentError, DocumentStore, MAX_PDF_BYTES, retrieve
+from paper_server.ai.documents import DocumentError, DocumentStore, MAX_PDF_BYTES, retrieve
 
 
 class LocalAiDocumentTests(unittest.TestCase):
@@ -63,7 +63,7 @@ class LocalAiDocumentTests(unittest.TestCase):
             self.store.read_pages(self.paper)
 
     def test_size_limit_and_cache_location_guard(self):
-        with patch("local_ai_documents.MAX_PDF_BYTES", 5), self.assertRaises(DocumentError):
+        with patch("paper_server.ai.documents.MAX_PDF_BYTES", 5), self.assertRaises(DocumentError):
             self.store.read_pages(self.paper)
         with self.assertRaises(DocumentError):
             DocumentStore(self.root, self.root.parent / "other-cache")
@@ -72,7 +72,7 @@ class LocalAiDocumentTests(unittest.TestCase):
     def test_page_evidence_cache_is_immutable_by_hash_and_source_unchanged(self):
         original = self.path.read_bytes()
         reader = self.reader(["Abstract: A receiver", "Power is 10 mW at 112 Gb/s.", "Conclusion"])
-        with patch("local_ai_documents.PdfReader", return_value=reader):
+        with patch("paper_server.ai.documents.PdfReader", return_value=reader):
             first = self.store.read_pages(self.paper, pages=[2, 1])
             second = self.store.read_pages({**self.paper, "id": 8, "title": "Updated title"}, pages=[1, 2])
         self.assertEqual([item["page"] for item in first], [1, 2])
@@ -88,7 +88,7 @@ class LocalAiDocumentTests(unittest.TestCase):
         self.assertEqual(len(old_cache), 2)
         old_contents = {str(path): path.read_bytes() for path in old_cache}
         self.path.write_bytes(original + b"new version")
-        with patch("local_ai_documents.PdfReader", return_value=self.reader(["Updated PDF text"])):
+        with patch("paper_server.ai.documents.PdfReader", return_value=self.reader(["Updated PDF text"])):
             changed = self.store.read_pages(self.paper)
         self.assertNotEqual(first[0]["pdf_sha256"], changed[0]["pdf_sha256"])
         self.assertEqual(len(list(self.store.cache_dir.rglob("*.json"))), 3)
@@ -98,7 +98,7 @@ class LocalAiDocumentTests(unittest.TestCase):
         for pages in ([], [0], [-1], [True], ["1"], list(range(1, 14))):
             with self.subTest(pages=pages), self.assertRaises(DocumentError):
                 self.store.read_pages(self.paper, pages=pages)
-        with patch("local_ai_documents.PdfReader", return_value=self.reader(["one", "two"])):
+        with patch("paper_server.ai.documents.PdfReader", return_value=self.reader(["one", "two"])):
             self.assertEqual(len(self.store.read_pages(self.paper, max_pages=1)), 1)
             with self.assertRaises(DocumentError):
                 self.store.read_pages(self.paper, pages=[3])
@@ -110,17 +110,17 @@ class LocalAiDocumentTests(unittest.TestCase):
         reader = self.reader(["secret"])
         reader.is_encrypted = True
         reader.decrypt.return_value = 0
-        with patch("local_ai_documents.PdfReader", return_value=reader), self.assertRaises(DocumentError):
+        with patch("paper_server.ai.documents.PdfReader", return_value=reader), self.assertRaises(DocumentError):
             self.store.read_pages(self.paper)
 
     def test_text_clip_and_corrupt_cache_does_not_overwrite_old_evidence(self):
-        with patch("local_ai_documents.PdfReader", return_value=self.reader(["x" * 33000])):
+        with patch("paper_server.ai.documents.PdfReader", return_value=self.reader(["x" * 33000])):
             result = self.store.read_pages(self.paper)
         self.assertEqual(len(result[0]["text"]), 32000)
         self.assertTrue(result[0]["text_truncated"])
         cache = next(self.store.cache_dir.rglob("*.json"))
         cache.write_text("bad old cache", encoding="utf-8")
-        with patch("local_ai_documents.PdfReader", return_value=self.reader(["Fresh extraction"])):
+        with patch("paper_server.ai.documents.PdfReader", return_value=self.reader(["Fresh extraction"])):
             recovered = self.store.read_pages(self.paper)
         self.assertEqual(recovered[0]["text"], "Fresh extraction")
         self.assertEqual(cache.read_text(encoding="utf-8"), "bad old cache")

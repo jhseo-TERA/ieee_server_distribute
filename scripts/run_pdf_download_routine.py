@@ -35,12 +35,12 @@ PROVIDERS = (
     ("nature", "download_nature_pdfs.py"),
 )
 PROVIDER_ATTEMPT_CAPS = {
-    # Morning 13 + afternoon 8; each invocation is bounded by split policy.
-    "optica": 21,
+    # Split limits also apply; combined Optica attempts cannot exceed 15/day.
+    "optica": 15,
 }
 PROVIDER_DAILY_ATTEMPT_CAPS = {
-    # Preserve the shared daily cap while testing slower afternoon pacing.
-    "optica": 21,
+    # Cap includes failed attempts; IEEE-hosted JLT has its own queue.
+    "optica": 15,
 }
 OPTICA_SPLIT_MORNING_LIMIT = 13
 OPTICA_SPLIT_AFTERNOON_LIMIT = 8
@@ -355,6 +355,17 @@ def main() -> int:
             f"{today}-{datetime.now().astimezone().strftime('%H%M%S')}-{os.getpid()}"
         )
         begin_pipeline(pipeline_run_id, today)
+        # Resolve JLT DOI redirects before splitting the publisher queues.
+        if args.provider in ("auto", "optica", "jlt_ieee"):
+            try:
+                try:
+                    from .resolve_jlt_ieee_routes import resolve_routes
+                except ImportError:
+                    from resolve_jlt_ieee_routes import resolve_routes
+                routed = resolve_routes(DB)
+                print(f"[*] JLT DOI -> IEEE: {routed} routes updated")
+            except Exception as exc:
+                print(f"[WARN] JLT route resolution unavailable: {type(exc).__name__}")
         counts = pending_counts()
         queue = PROVIDERS if args.provider == "auto" else tuple(
             item for item in PROVIDERS if item[0] == args.provider

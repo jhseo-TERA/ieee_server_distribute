@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from sqlalchemy import text
 import web.app as app
-from recommendation_feedback import FeedbackStore
+from paper_server.recommendation.feedback import FeedbackStore
 
 
 class TemporaryEngine:

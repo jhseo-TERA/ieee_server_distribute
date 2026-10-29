@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>로그인 현황 · Paper Repository</title>
+  <link rel="stylesheet" href="{{ url_for('static',filename='daily_review.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static',filename='account_activity.css') }}">
+  <script src="{{ url_for('static',filename='account_presence.js') }}" data-csrf="{{ csrf_token }}" defer></script>
+  <script src="{{ url_for('static',filename='account_activity.js') }}" defer></script>
+</head>
+<body>
+  <header class="site-header"><a class="brand" href="/">Paper Repository <span>/ 로그인 현황</span></a><nav aria-label="주요 메뉴"><a href="/">논문 저장소</a><a href="/daily-review">개인 리뷰</a><a href="/account/activity" aria-current="page">로그인 현황</a></nav><span class="username">{{ username }}</span></header>
+  <main>
+    <div class="intro"><div><p class="eyebrow">ACCOUNT ACTIVITY</p><h1>계정별 로그인 현황</h1><p class="intro-copy">최근 로그인과 활동을 한곳에서 확인합니다.</p></div><button class="button primary" id="refresh-activity" type="button">새로고침</button></div>
+    <div class="activity-summary"><div><span>등록된 계정</span><strong id="account-count">–</strong></div><div><span>최근 5분 활동 계정</span><strong id="online-count">–</strong></div><div><span>로그인 유지 세션</span><strong id="session-count">–</strong></div></div>
+    <p class="activity-note">활동 중은 최근 5분 내 요청 기준입니다. 열어 둔 화면은 보이는 동안 1분마다 신호를 보냅니다. 브라우저를 닫아도 세션은 로그아웃하거나 만료될 때까지 유지될 수 있습니다.</p>
+    <p id="activity-status" role="status" aria-live="polite">로그인 현황을 불러오는 중…</p>
+    <div class="activity-table"><table><thead><tr><th>계정</th><th>권한</th><th>활동 상태</th><th>로그인 유지</th><th>최근 로그인</th><th>최근 활동</th></tr></thead><tbody id="account-rows"></tbody></table></div>
+    <section class="history"><div class="section-heading"><div><p class="eyebrow">RECENT SESSIONS</p><h2>최근 로그인 기록</h2></div><span id="last-refreshed"></span></div><p class="activity-note">기능 도입 이후의 기록입니다. 이전에 로그인한 세션은 처음 확인한 시각부터 표시하며, 실제 로그인 시각은 추정하지 않습니다.</p><div class="activity-table"><table><thead><tr><th>계정</th><th>확인 구분</th><th>로그인 / 첫 확인</th><th>최근 활동</th><th>상태</th><th>로그아웃</th></tr></thead><tbody id="session-rows"></tbody></table></div></section>
+  </main>
+</body></html>

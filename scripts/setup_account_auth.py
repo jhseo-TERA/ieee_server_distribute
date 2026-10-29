@@ -5,7 +5,7 @@ import sys
 
 from migrate_accounts import connect_engine, ROOT
 sys.path.insert(0, str(ROOT))
-from account_store import AccountStore
+from paper_server.accounts import AccountStore
 
 
 def main():

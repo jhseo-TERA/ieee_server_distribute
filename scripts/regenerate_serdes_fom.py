@@ -2,8 +2,8 @@
 r"""Audit or apply spreadsheet-style SerDes FoM regeneration.
 
 Examples:
-  .venv\Scripts\python.exe scripts\regenerate_serdes_fom.py
-  .venv\Scripts\python.exe scripts\regenerate_serdes_fom.py --apply
+  .venv\Scripts\python.exe scripts\regenerate_paper_server/serdes/fom.py
+  .venv\Scripts\python.exe scripts\regenerate_paper_server/serdes/fom.py --apply
 
 The default is a read-only dry run.  ``--apply`` fills only missing calculated
 energy values and writes traceable formula evidence; reported values are never
@@ -22,7 +22,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from serdes_fom import json_default, regenerate_fom  # noqa: E402
+from paper_server.serdes.fom import json_default, regenerate_fom  # noqa: E402
 from scripts.serdes_data_pipeline import db_connect, ensure_schema  # noqa: E402
 
 

@@ -7,7 +7,7 @@ import time
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from sqlalchemy import text
 from web.app import app, engine
-from local_ai_recommendations import MODES
+from paper_server.ai.recommendations import MODES
 
 
 def counts():
