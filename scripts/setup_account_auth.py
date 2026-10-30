@@ -3,7 +3,10 @@ import argparse
 import getpass
 import sys
 
-from migrate_accounts import connect_engine, ROOT
+if __package__:
+    from .migrate_accounts import connect_engine, ROOT
+else:
+    from migrate_accounts import connect_engine, ROOT
 sys.path.insert(0, str(ROOT))
 from paper_server.accounts import AccountStore
 

@@ -86,7 +86,7 @@ try {
     if ([string]::IsNullOrWhiteSpace($env:APP_SECRET_KEY)) {
         $env:APP_SECRET_KEY = "restore-test-only-secret"
     }
-    & $venvPython -m unittest discover -s (Join-Path $root "tests") -q
+    & $venvPython (Join-Path $root "scripts\run_tests.py") --python-only
     if ($LASTEXITCODE -ne 0) {
         throw "restored environment failed the test suite with exit code $LASTEXITCODE"
     }

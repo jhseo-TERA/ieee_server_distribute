@@ -77,6 +77,11 @@ def top_items_by_article(items: list[dict]) -> dict[str, list[dict]]:
     return result
 
 
+def local_path_key(value: str) -> str:
+    """Compare Windows short/long paths and case using the same canonical form."""
+    return os.path.normcase(str(Path(value).resolve()))
+
+
 def attachment_plan(
     db_items: dict[str, dict],
     all_items: list[dict],
@@ -101,12 +106,12 @@ def attachment_plan(
         existing = children.get(parent_key, [])
         complete = [item for item in existing if not has_tag(item, PENDING_TAG)]
         if ensure_local_links:
-            destination = os.path.normcase(str(Path(row["absolute_pdf_path"]).resolve()))
+            destination = local_path_key(row["absolute_pdf_path"])
             complete = [
                 item for item in complete
                 if item["data"].get("linkMode") == "linked_file"
                 and (
-                    os.path.normcase(os.path.normpath(item["data"].get("path") or ""))
+                    local_path_key(item["data"].get("path") or "")
                     == destination
                     or (
                         has_tag(item, LINKED_TAG)
@@ -159,9 +164,7 @@ def linked_path_updates(
                 or path.startswith("attachments:")
             ):
                 continue
-            if os.path.normcase(os.path.normpath(path)) == os.path.normcase(
-                str(destination)
-            ):
+            if local_path_key(path) == local_path_key(str(destination)):
                 continue
             updated = copy.deepcopy(data)
             updated["path"] = str(destination)
@@ -483,7 +486,7 @@ def main() -> int:
         if args.mode == "linked" else []
     )
     local_links = {
-        (data["parentItem"], os.path.normcase(os.path.normpath(data["path"])))
+        (data["parentItem"], local_path_key(data["path"]))
         for item in verify_items
         if (data := item.get("data", {})).get("linkMode") == "linked_file"
         and data.get("parentItem") and data.get("path") and not data.get("deleted")
@@ -494,7 +497,7 @@ def main() -> int:
         article for article, row in db_items.items()
         if not any(
             collection_key in parent.get("data", {}).get("collections", [])
-            and (item_key(parent), os.path.normcase(str(Path(row["absolute_pdf_path"]).resolve())))
+            and (item_key(parent), local_path_key(row["absolute_pdf_path"]))
             in local_links
             for parent in verified_parents.get(article, [])
         )

@@ -12,6 +12,12 @@ import re
 from pathlib import Path
 
 from dotenv import dotenv_values
+
+if __package__:
+    from .migrate_accounts import connect_engine
+else:
+    from migrate_accounts import connect_engine
+from paper_server.accounts import AccountStore
 from werkzeug.security import generate_password_hash
 
 
@@ -33,7 +39,8 @@ def main() -> None:
     if not ENV_PATH.exists():
         raise SystemExit(f"[오류] .env 파일이 없습니다: {ENV_PATH}")
 
-    username = str(dotenv_values(ENV_PATH).get("AUTH_USERNAME") or "").strip()
+    values = dotenv_values(ENV_PATH)
+    username = str(values.get("AUTH_USERNAME") or "").strip()
     if not username:
         raise SystemExit("[오류] .env의 AUTH_USERNAME이 비어 있습니다.")
 
@@ -46,11 +53,12 @@ def main() -> None:
     if username.casefold() in password.casefold():
         raise SystemExit("[오류] 비밀번호에 읽기 전용 계정 ID를 포함할 수 없습니다.")
 
-    if os.getenv('ACCOUNT_AUTH_ENABLED', '1') == '1':
-        from migrate_accounts import connect_engine
-        from paper_server.accounts import AccountStore
+    if os.getenv('ACCOUNT_AUTH_ENABLED', values.get('ACCOUNT_AUTH_ENABLED', '1')) == '1':
         engine, _ = connect_engine()
-        AccountStore(engine).set_password(username, password)
+        try:
+            AccountStore(engine).set_password(username, password)
+        finally:
+            engine.dispose()
         print('[완료] 읽기 전용 계정 비밀번호가 DB에 저장되었습니다. 바로 로그인할 수 있습니다.')
         return
 

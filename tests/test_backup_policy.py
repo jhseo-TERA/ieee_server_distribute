@@ -49,7 +49,8 @@ class BackupPolicyTests(unittest.TestCase):
             self.assertIn(excluded, ignore)
         self.assertIn("requirements.lock.txt", restore)
         self.assertIn("-m venv", restore)
-        self.assertIn("-m unittest discover", restore)
+        self.assertIn('scripts\\run_tests.py', restore)
+        self.assertIn('--python-only', restore)
 
 
 if __name__ == "__main__":

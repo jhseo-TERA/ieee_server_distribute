@@ -173,15 +173,15 @@ class DailyRoutineLockTests(unittest.TestCase):
 
 
 class DailyRoutineBudgetTests(unittest.TestCase):
-    def test_optica_provider_attempt_cap_is_morning_only(self):
+    def test_optica_attempts_share_a_fifteen_per_day_cap(self):
         self.assertEqual(
-            run_pdf_download_routine.provider_allowance("optica", 30, 635), 13
+            run_pdf_download_routine.provider_allowance("optica", 30, 635), 15
         )
         self.assertEqual(
             run_pdf_download_routine.provider_allowance(
                 "optica", 30, 635, provider_used=13
             ),
-            0,
+            2,
         )
         self.assertEqual(
             run_pdf_download_routine.provider_allowance(
@@ -197,13 +197,13 @@ class DailyRoutineBudgetTests(unittest.TestCase):
             run_pdf_download_routine.provider_allowance(
                 "optica", 30, 635, provider_used=13
             ),
-            0,
+            2,
         )
         self.assertEqual(
             run_pdf_download_routine.provider_allowance("nature", 12, 2), 2
         )
 
-    def test_split_policy_disables_later_optica_run(self):
+    def test_split_policy_bounds_morning_and_afternoon(self):
         state = {"optica_split_morning_date": "2026-08-16"}
         self.assertEqual(
             run_pdf_download_routine.split_policy_invocation_cap(
@@ -212,15 +212,16 @@ class DailyRoutineBudgetTests(unittest.TestCase):
                 state,
                 split_morning_invocation=False,
             ),
-            0,
+            8,
         )
-        self.assertIsNone(
+        self.assertEqual(
             run_pdf_download_routine.split_policy_invocation_cap(
                 "optica",
                 "2026-08-16",
                 state,
                 split_morning_invocation=True,
-            )
+            ),
+            13,
         )
         self.assertIsNone(
             run_pdf_download_routine.split_policy_invocation_cap(
@@ -231,7 +232,7 @@ class DailyRoutineBudgetTests(unittest.TestCase):
             )
         )
 
-    def test_permanent_policy_disables_afternoon_even_if_morning_bootstrap_failed(self):
+    def test_afternoon_cap_does_not_depend_on_morning_bootstrap(self):
         self.assertEqual(
             run_pdf_download_routine.split_policy_invocation_cap(
                 "optica",
@@ -239,7 +240,7 @@ class DailyRoutineBudgetTests(unittest.TestCase):
                 {},
                 split_morning_invocation=False,
             ),
-            0,
+            8,
         )
         self.assertEqual(
             run_pdf_download_routine.split_policy_invocation_cap(
@@ -248,7 +249,7 @@ class DailyRoutineBudgetTests(unittest.TestCase):
                 {},
                 split_morning_invocation=False,
             ),
-            0,
+            8,
         )
 
     def test_child_output_is_safe_for_legacy_windows_console(self):

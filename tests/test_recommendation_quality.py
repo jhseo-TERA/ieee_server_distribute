@@ -179,6 +179,12 @@ class QualityTests(unittest.TestCase):
 
 class FeedbackTests(unittest.TestCase):
     def setUp(self):
+        # These fixtures exercise the supported legacy/global-state mode.
+        # DB account authentication and ownership are covered by test_account_isolation.
+        config = patch.dict(app.app.config, ACCOUNT_AUTH_ENABLED=False,
+                            ACCOUNT_ACTIVITY_ENABLED=False, TESTING=True)
+        config.start()
+        self.addCleanup(config.stop)
         self.engine = create_engine('sqlite://')
         self.addCleanup(self.engine.dispose)
         @event.listens_for(self.engine, 'before_cursor_execute', retval=True)

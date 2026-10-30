@@ -9,6 +9,12 @@ from scripts import setup_viewer_auth
 
 
 class ViewerAuthSetupTests(unittest.TestCase):
+    def setUp(self):
+        # Explicitly select .env password storage for these legacy-mode fixtures.
+        mode = patch.dict('os.environ', {'ACCOUNT_AUTH_ENABLED': '0'})
+        mode.start()
+        self.addCleanup(mode.stop)
+
     def test_updates_only_viewer_hash_and_preserves_other_values(self):
         with tempfile.TemporaryDirectory() as directory:
             env_path = Path(directory) / ".env"

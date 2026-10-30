@@ -14,6 +14,12 @@ from pathlib import Path
 from werkzeug.security import generate_password_hash
 from dotenv import dotenv_values
 
+if __package__:
+    from .migrate_accounts import connect_engine
+else:
+    from migrate_accounts import connect_engine
+from paper_server.accounts import AccountStore
+
 
 ROOT = Path(__file__).resolve().parents[1]
 ENV_PATH = ROOT / ".env"
@@ -34,7 +40,8 @@ def main() -> None:
     if not ENV_PATH.exists():
         raise SystemExit(f"[오류] .env 파일이 없습니다: {ENV_PATH}")
 
-    username = str(dotenv_values(ENV_PATH).get("ADMIN_USERNAME") or DEFAULT_ADMIN_USERNAME).strip()
+    values = dotenv_values(ENV_PATH)
+    username = str(values.get("ADMIN_USERNAME") or DEFAULT_ADMIN_USERNAME).strip()
     if not username:
         raise SystemExit("[오류] 관리자 ID가 비어 있습니다.")
     password = getpass.getpass(f"{username} 새 비밀번호: ")
@@ -46,11 +53,12 @@ def main() -> None:
     if username.casefold() in password.casefold():
         raise SystemExit("[오류] 비밀번호에 관리자 ID를 포함할 수 없습니다.")
 
-    if os.getenv('ACCOUNT_AUTH_ENABLED', '1') == '1':
-        from migrate_accounts import connect_engine
-        from paper_server.accounts import AccountStore
+    if os.getenv('ACCOUNT_AUTH_ENABLED', values.get('ACCOUNT_AUTH_ENABLED', '1')) == '1':
         engine, _ = connect_engine()
-        AccountStore(engine).set_password(username, password)
+        try:
+            AccountStore(engine).set_password(username, password)
+        finally:
+            engine.dispose()
         print('[완료] 관리자 비밀번호가 DB에 저장되었습니다. 바로 로그인할 수 있습니다.')
         return
 

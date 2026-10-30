@@ -33,8 +33,8 @@ function element(on=false){
     classList:{contains:c=>classes.has(c), toggle(c,on){on ? classes.add(c) : classes.delete(c);}},
     setAttribute(){}, addEventListener(){}};
 }
-function ui(){
-  const elements = new Map(), calls = [], timers = new Map(), stars = [element(),element()];
+function ui({metaOk=true, metaFavoriteTotal=null}={}){
+  const elements = new Map(), calls = [], metaRequests = [], timers = new Map(), stars = [element(),element()];
   let sequence = 0;
   const get = id=>{if(!elements.has(id)) elements.set(id,element()); return elements.get(id);};
   get('stat-fav').dataset.n = '10';
@@ -43,7 +43,14 @@ function ui(){
       querySelectorAll:s=>s.includes('data-art="p"') ? stars : []},
     setTimeout(fn,ms){const id=++sequence;timers.set(id,{fn,ms});return id;},
     clearTimeout(id){timers.delete(id);},
-    fetch(url,options){return new Promise((resolve,reject)=>calls.push({url,options,resolve,reject}));}
+    fetch(url,options){
+      if(url==='/api/meta') { metaRequests.push(url); return Promise.resolve({ok:metaOk,json:async()=>({
+        total:100,fav_total:metaFavoriteTotal ?? Number(get('stat-fav').dataset.n),pdf_total:0,
+        fav_pdf_total:0,fav_missing_pdf_total:0,nonfav_pdf_total:0,
+        sources:[],years:[],publishers:[]
+      })}); }
+      return new Promise((resolve,reject)=>calls.push({url,options,resolve,reject}));
+    }
   });
   vm.runInContext(script,context);
   const run = code=>vm.runInContext(code,context);
@@ -52,8 +59,24 @@ function ui(){
     groups:[{name:'JSSC',type:'journal',count:2}], fav_count:10,source_count:1,per_source:20,ai:{},refresh:{status:'ready'}};
   run(`lastRecoData = ${JSON.stringify(data)}; renderRecoItems();`);
   const reply = (i,body,ok=true)=>calls[i].resolve({ok,json:async()=>body});
-  return {run,get,calls,reply,timers,stars,data,context};
+  return {run,get,calls,metaRequests,reply,timers,stars,data,context};
 }
+
+test('successful save refreshes counts from metadata without extra mutation requests',async()=>{
+  const u=ui({metaFavoriteTotal:13}), pending=u.run("toggleFav('p',clicked)");
+  u.reply(0,{ok:true,favorite_delta:1});await pending;
+  assert.deepEqual(u.metaRequests,['/api/meta']);
+  assert.equal(u.calls.length,1);
+  assert.equal(Number(u.get('stat-fav').dataset.n),13);
+});
+
+test('metadata failure after saving preserves the saved favorite and reports the refresh error',async()=>{
+  const u=ui({metaOk:false}),pending=u.run("toggleFav('p',clicked)");
+  u.reply(0,{ok:true,favorite_delta:1});await pending;
+  assert.equal(u.stars[0].classList.contains('on'),true);
+  assert.equal(Number(u.get('stat-fav').dataset.n),11);
+  assert.match(u.get('favorite-status').textContent,/즐겨찾기는 저장됐지만/);
+});
 
 test('stars and rows change before network response; duplicate clicks send no extra request', async()=>{
   const u=ui();

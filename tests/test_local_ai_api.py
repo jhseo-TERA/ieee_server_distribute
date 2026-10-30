@@ -7,6 +7,12 @@ from paper_server.ai.service import validate_job
 
 class LocalAIRouteTests(unittest.TestCase):
     def setUp(self):
+        # These fixtures exercise the supported legacy/global-state mode.
+        # DB account authentication and ownership are covered by test_account_isolation.
+        config = patch.dict(app_module.app.config, ACCOUNT_AUTH_ENABLED=False,
+                            ACCOUNT_ACTIVITY_ENABLED=False, TESTING=True)
+        config.start()
+        self.addCleanup(config.stop)
         self.app = app_module.app
         self.app.config.update(TESTING=True)
         self.client = self.app.test_client()

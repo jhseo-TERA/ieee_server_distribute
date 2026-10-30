@@ -11,6 +11,12 @@ from scripts import sync_user_serdes_survey as survey
 
 
 class PrivateSourceSettingsTests(unittest.TestCase):
+    def setUp(self):
+        # Explicitly select .env password storage for these legacy-mode fixtures.
+        mode = patch.dict('os.environ', {'ACCOUNT_AUTH_ENABLED': '0'})
+        mode.start()
+        self.addCleanup(mode.stop)
+
     def test_admin_password_change_preserves_configured_account_and_other_settings(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / ".env"

@@ -21,6 +21,8 @@ $tar = (Get-Command tar.exe -ErrorAction Stop).Source
 
 $sourceRoots = @("scripts", "web", "tests", "py_00_src", "config", "paper_server", "docs")
 $rootFiles = @(
+    "README.md",
+    "LICENSE.md",
     "README_SERVER.md",
     "README.txt",
     "RELAUNCH_SERVICES.bat",

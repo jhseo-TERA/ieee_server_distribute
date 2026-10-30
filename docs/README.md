@@ -4,6 +4,7 @@
 
 ## 운영·복구
 
+- [새 사용자 설치 가이드](operations/INSTALLATION.md)
 - [BACKUP_POLICY.md](operations/BACKUP_POLICY.md)
 - [DAILY_WORKFLOW.md](operations/DAILY_WORKFLOW.md)
 - [METADATA_MAINTENANCE.md](operations/METADATA_MAINTENANCE.md)

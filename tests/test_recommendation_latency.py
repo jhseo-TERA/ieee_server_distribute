@@ -106,6 +106,12 @@ class BackgroundCacheTests(unittest.TestCase):
 
 class FavoriteBulkTests(unittest.TestCase):
     def setUp(self):
+        # These fixtures exercise the supported legacy/global-state mode.
+        # DB account authentication and ownership are covered by test_account_isolation.
+        config = patch.dict(app_module.app.config, ACCOUNT_AUTH_ENABLED=False,
+                            ACCOUNT_ACTIVITY_ENABLED=False, TESTING=True)
+        config.start()
+        self.addCleanup(config.stop)
         # SQLite checks actual transaction results. MySQL row locks are preserved
         # in production; only this test adapter strips its unsupported FOR UPDATE.
         self.engine = create_engine('sqlite://')

@@ -155,8 +155,8 @@ class FallbackTests(unittest.TestCase):
             (root/'outside.pdf').write_bytes(b'pdf')
             library = CitationLibrary(Mock(),root)
             self.assertIsNone(library.pdf({**self.seed_row,'pdf_local_path':'outside.pdf'}))
-            (root/'ieee-pdf/101.pdf').write_bytes(b'pdf')
-            self.assertEqual(library.pdf(self.seed_row),root/'ieee-pdf/101.pdf')
+            ((root/'ieee-pdf/101.pdf').resolve()).write_bytes(b'pdf')
+            self.assertEqual(library.pdf(self.seed_row),(root/'ieee-pdf/101.pdf').resolve())
 
     def test_pdf_parser_requires_a_numbered_references_section(self):
         reader=Mock(pages=[Mock(extract_text=Mock(return_value='Introduction\n[1] Not a bibliography')),
